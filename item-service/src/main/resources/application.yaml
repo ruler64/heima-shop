@@ -1,0 +1,25 @@
+server:
+  port: 8081  # 端口不能重合
+
+hm:
+  db:
+    database: hm-item
+  swagger:
+    title: "黑马商城商品服务接口文档"
+    package: com.hmall.item.controller
+spring:
+  rabbitmq:
+    host: 192.168.31.128
+    port: 5672 # 端口
+    virtual-host: /hmall # 虚拟主机
+    username: hmall # 用户名
+    password: 123 # 密码
+    connection-timeout: 1s # 设置MQ的连接超时时间
+    template:
+      retry:
+        enabled: true # 开启发送者超时重试机制，防止由于网络波动，可能会出现的发送者连接MQ失败的情况
+        initial-interval: 1000ms # 失败后的初始等待时间
+        multiplier: 1 # 失败后下次的等待时间倍数，下次的等待时常 = initial-interval * multiplier
+        max-attempts: 3 # 最大重试次数
+    publisher-confirm-type: correlated # 发送者确认机制，方法二，correlated异步调用
+    publisher-returns: true # 发送者确认机制，方法一

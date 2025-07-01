@@ -1,0 +1,26 @@
+server:
+  port: 8087  # 端口不能重合
+hm:
+  db:
+    database: hm-item
+  swagger:
+    title: "黑马商城商品搜索服务接口文档"
+    package: com.hmall.search.controller
+    description: "黑马商城商品搜索服务接口文档"
+spring:
+  rabbitmq:
+    host: 192.168.31.128
+    port: 5672 # 端口
+    virtual-host: /hmall # 虚拟主机
+    username: hmall # 用户名
+    password: 123 # 密码
+    listener:
+      simple:
+        prefetch: 1 #每次处理一条消息，谁处理的快谁就处理的多
+        acknowledge-mode: auto # 消费者确认机制，springAMQP自动处理，若nack则再次投递消息
+        retry:
+          enabled: true # 开启消费者失败重试机制，消费者异常时利用本地重试，而不是无限的requeue到mq与mq之间无限投递重试
+          initial-interval: 1000ms # 失败后的初始等待时间
+          multiplier: 1 # 失败后下次的等待时间倍数，下次的等待时常 = initial-interval * multiplier
+          max-attempts: 3 # 最大重试次数
+          stateless: true # true无状态；false有状态。如果业务中包含"事务"Transactional，这里才改为false

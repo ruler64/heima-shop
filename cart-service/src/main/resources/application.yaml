@@ -1,0 +1,19 @@
+server:
+  port: 8082  # 端口不能重合
+feign:
+  okhttp:  # 引入OKHttp的线程池功能
+    enabled: true # 开启OKHttp功能
+  sentinel:
+    enabled: true # 开启feign远程调用的流量控制
+hm:
+  db:
+    database: hm-cart
+  swagger:
+    title: "黑马商城购物车服务接口文档"
+    package: com.hmall.cart.controller
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: localhost:8090  # sentinel的控制台地址
+      http-method-specify: true  # 是否设置请求方式作为资源名称（解决RESTFUL风格请求前缀”/carts“一致的问题）

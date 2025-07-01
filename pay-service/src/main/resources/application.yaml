@@ -1,0 +1,63 @@
+server:
+  port: 8086  # 端口不能重合
+spring:
+  application:
+    name: pay-service  # 微服务名称
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:mysql://${hm.db.host}:3306/hm-pay?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: ${hm.db.pw}
+  cloud:
+    nacos:
+      server-addr: 192.168.31.128:8848 # 虚拟机地址:nacos端口
+  rabbitmq:
+    host: 192.168.31.128
+    port: 5672 # 端口
+    virtual-host: /hmall # 虚拟主机
+    username: hmall # 用户名
+    password: 123 # 密码
+    connection-timeout: 1s # 设置MQ的连接超时时间
+    template:
+      retry:
+        enabled: true # 开启发送者超时重试机制，防止由于网络波动，可能会出现的发送者连接MQ失败的情况
+        initial-interval: 1000ms # 失败后的初始等待时间
+        multiplier: 1 # 失败后下次的等待时间倍数，下次的等待时常 = initial-interval * multiplier
+        max-attempts: 3 # 最大重试次数
+    publisher-confirm-type: correlated # 发送者确认机制，方法二，correlated异步调用
+    publisher-returns: true # 发送者确认机制，方法一
+
+mybatis-plus:
+  configuration:
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+  global-config:
+    db-config:
+      update-strategy: not_null
+      id-type: auto
+logging:
+  level:
+    com.hmall: debug
+  pattern:
+    dateformat: HH:mm:ss:SSS
+  file:
+    path: "logs/${spring.application.name}"
+knife4j:
+  enable: true
+  openapi:
+    title: 黑马商城支付服务接口文档
+    description: "黑马商城支付服务接口文档"
+    email: zhanghuyi@itcast.cn
+    concat: 虎哥
+    url: https://www.itcast.cn
+    version: v1.0.0
+    group:
+      default:
+        group-name: default
+        api-rule: package
+        api-rule-resources:
+          - com.hmall.pay.controller
+
+
+# keytool -genkeypair -alias hmall -keyalg RSA -keypass hmall123 -keystore hmall.jks -storepass hmall123
