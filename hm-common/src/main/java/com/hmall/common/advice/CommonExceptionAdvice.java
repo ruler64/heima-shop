@@ -16,11 +16,11 @@ import org.springframework.web.util.NestedServletException;
 import java.net.BindException;
 import java.util.stream.Collectors;
 
-@RestControllerAdvice
+@RestControllerAdvice//这个注解告诉 Spring Boot：“这是一个全局异常拦截器，随时监听系统里抛出的任何异常。”
 @Slf4j
 public class CommonExceptionAdvice {
 
-    @ExceptionHandler(DbException.class)
+    @ExceptionHandler(DbException.class)//你可以看到有很多被这个注解修饰的方法。它相当于分类处理
     public Object handleDbException(DbException e) {
         log.error("mysql数据库操作异常 -> ", e);
         return processResponse(e);
@@ -33,7 +33,7 @@ public class CommonExceptionAdvice {
         return processResponse(e);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler(MethodArgumentNotValidException.class)//(通常是实体类校验如 @Valid 失败)，它会把具体的字段错误提取出来并返回给前端。
     public Object handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String msg = e.getBindingResult().getAllErrors()
                 .stream().map(ObjectError::getDefaultMessage)
@@ -62,7 +62,7 @@ public class CommonExceptionAdvice {
         return processResponse(new CommonException("服务器内部异常", 500));
     }
 
-    private ResponseEntity<R<Void>> processResponse(CommonException e){
+    private ResponseEntity<R<Void>> processResponse(CommonException e){//将所有捕获到的异常，统一转换成前端能够解析的标准响应格式R对象
         return ResponseEntity.status(e.getCode()).body(R.error(e));
     }
 }

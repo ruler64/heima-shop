@@ -17,10 +17,10 @@ public interface ItemClient {
     List<ItemDTO> queryItemByIds(@RequestParam("ids") Collection<Long> ids);
 
     @PutMapping("/items/stock/deduct")
-    public void deductStock(@RequestBody List<OrderDetailDTO> items);
+    public void deductStock(Long orderId,@RequestBody List<OrderDetailDTO> items);
 
     @PutMapping("/items/stock/increase")
-    public void increaseStock(@RequestBody List<OrderDetailDTO> items);
+    public void increaseStock(Long orderId,@RequestBody List<OrderDetailDTO> items);
 
     @GetMapping("{/items/id}")
     public ItemDTO queryItemById(@PathVariable("id") Long id);

@@ -31,10 +31,13 @@ public class ItemController {
     @ApiOperation("分页查询商品")
     @GetMapping("/page")
     public PageDTO<ItemDTO> queryItemByPage(PageQuery query) {
-        // 1.分页查询
-        Page<Item> result = itemService.page(query.toMpPage("update_time", false));
-        // 2.封装并返回
-        return PageDTO.of(result, ItemDTO.class);
+        // 注释掉原有的 DB 直查代码
+//        // 1.分页查询
+//        Page<Item> result = itemService.page(query.toMpPage("update_time", false));
+//        // 2.封装并返回
+//        return PageDTO.of(result, ItemDTO.class);
+        // 替换为 DCL 缓存架构方法
+        return itemService.queryItemByPageWithCache(query);
     }
 
     @ApiOperation("根据id批量查询商品")
@@ -88,13 +91,13 @@ public class ItemController {
 
     @ApiOperation("批量扣减库存")
     @PutMapping("/stock/deduct")
-    public void deductStock(@RequestBody List<OrderDetailDTO> items){
-        itemService.deductStock(items);
+    public void deductStock(Long orderId,@RequestBody List<OrderDetailDTO> items){
+        itemService.deductStock(orderId,items);
     }
 
     @ApiOperation("批量增加库存")
     @PutMapping("/stock/increase")
-    public void increaseStock(@RequestBody List<OrderDetailDTO> items){
-        itemService.increaseStock(items);
+    public void increaseStock(Long orderId, @RequestBody List<OrderDetailDTO> items){
+        itemService.increaseStock(orderId,items);
     }
 }

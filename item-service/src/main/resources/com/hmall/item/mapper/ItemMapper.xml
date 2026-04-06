@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hmall.item.mapper.ItemMapper">
+
+    <update id="batchDeductStockSafe">
+        UPDATE item
+        SET stock = stock -
+        <foreach collection="list" item="item" open="CASE id" separator=" " close="END">
+            WHEN #{item.itemId} THEN #{item.num}
+        </foreach>
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.itemId}
+        </foreach>
+        AND (
+        <foreach collection="list" item="item" separator=" OR ">
+            (id = #{item.itemId} AND stock >= #{item.num})
+        </foreach>
+        )
+    </update>
+<!--    collection="list"：告诉 MyBatis，传进来的参数是一个集合（List）。
+
+item="item"：给集合里的每个对象起个临时外号叫 item。-->
+<!--UPDATE item
+SET stock = stock -
+    CASE id
+        WHEN 101 THEN 2   商品101扣2个
+        WHEN 102 THEN 5   商品102扣5个
+    END
+WHERE id IN (101, 102)  只更新这些ID
+AND (
+    (id = 101 AND stock >= 2) OR (id = 102 AND stock >= 5)  只有库存够才扣
+)-->
+    <update id="batchIncreaseStockSafe">
+        UPDATE item
+        SET stock = stock +
+        <foreach collection="list" item="item" open="CASE id" separator=" " close="END">
+            WHEN #{item.itemId} THEN #{item.num}
+        </foreach>
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.itemId}
+        </foreach>
+    </update>
+
+</mapper>

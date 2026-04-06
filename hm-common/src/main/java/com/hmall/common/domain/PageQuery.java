@@ -34,21 +34,21 @@ public class PageQuery {
 
     public <T> Page<T> toMpPage(OrderItem... orderItems) {//给定排序字段，进行分页查询
         Page<T> page = new Page<>(pageNo, pageSize);
-        // 是否手动指定排序方式
+        // 如果后端硬性规定了排序方式（通过参数传进来的 orderItems）是否手动指定排序方式
         if (orderItems != null && orderItems.length > 0) {
             for (OrderItem orderItem : orderItems) {
                 page.addOrder(orderItem);
             }
             return page;
         }
-        // 前端是否有排序字段
+        // 如果后端没规定，但前端传了排序字段（比如前端要求按价格 sortBy="price"）
         if (StrUtil.isNotEmpty(sortBy)){
-            OrderItem orderItem = new OrderItem();
+            OrderItem orderItem = new OrderItem();//OrderItem排序指令。它告诉框架最终的 SQL 要拼上 ORDER BY column ASC/DESC
             orderItem.setAsc(isAsc);
             orderItem.setColumn(sortBy);
             page.addOrder(orderItem);
         }
-        return page;
+        return page;//把Page<T>对象传给 Mapper 接口，MyBatis-Plus 就会在底层自动帮你拦截 SQL
     }
 
     public <T> Page<T> toMpPage(String defaultSortBy, boolean isAsc) {

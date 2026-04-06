@@ -101,6 +101,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     }
 
     public boolean markPayOrderSuccess(Long id, LocalDateTime successTime) {
+        // 利用 MyBatis-Plus 的 lambdaUpdate() 构建带有前置状态校验的 SQL
         return lambdaUpdate()
                 .set(PayOrder::getStatus, PayStatus.TRADE_SUCCESS.getValue())
                 .set(PayOrder::getPaySuccessTime, successTime)
@@ -108,6 +109,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
                 // 支付状态的乐观锁判断
                 .in(PayOrder::getStatus, PayStatus.NOT_COMMIT.getValue(), PayStatus.WAIT_BUYER_PAY.getValue())
                 .update();
+
     }
 
 

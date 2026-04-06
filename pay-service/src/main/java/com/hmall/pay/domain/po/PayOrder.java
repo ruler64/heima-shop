@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
  * </p>
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
-@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = false)//自动生成 equals() 和 hashCode() 方法,callSuper = false 表示在生成这两个方法时，‌不调用父类的 equals() 或 hashCode()‌，仅基于当前类的字段进行比较
+@Accessors(chain = true)//启用 ‌链式 Setter‌，即每个 setXxx() 方法返回 this（当前对象），支持连续调用.setid().setbiz().setpay
 @TableName("pay_order")
 public class PayOrder implements Serializable {
 

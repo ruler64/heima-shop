@@ -3,6 +3,8 @@ package com.hmall.item.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hmall.api.dto.ItemDTO;
 import com.hmall.api.dto.OrderDetailDTO;
+import com.hmall.common.domain.PageDTO;
+import com.hmall.common.domain.PageQuery;
 import com.hmall.item.domain.po.Item;
 import java.util.Collection;
 import java.util.List;
@@ -17,9 +19,12 @@ import java.util.List;
  */
 public interface IItemService extends IService<Item> {
 
-    void deductStock(List<OrderDetailDTO> items);
+    void deductStock(Long orderId,List<OrderDetailDTO> items);
+
+    PageDTO<ItemDTO> queryItemByPageWithCache(PageQuery query);
 
     List<ItemDTO> queryItemByIds(Collection<Long> ids);
 
-    void increaseStock(List<OrderDetailDTO> items);
+    void increaseStock(Long orderId, List<OrderDetailDTO> items);
+
 }
