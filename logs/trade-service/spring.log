@@ -8962,3 +8962,10 @@ java.util.concurrent.TimeoutException: Waited 3000 milliseconds (plus 14 millise
 09:19:01:161 DEBUG 78528 --- [Thread-606] c.h.t.m.L.selectList                     : <==      Total: 0
 09:19:31:163 DEBUG 78528 --- [Thread-608] c.h.t.m.L.selectList                     : ==>  Preparing: SELECT id,event_type,payload,status,create_time,update_time FROM local_event_outbox WHERE (status = ? AND event_type = ?) LIMIT 100
 09:19:31:163 DEBUG 78528 --- [Thread-608] c.h.t.m.L.selectList                     : ==> Parameters: 0(Integer), ORDER_CREATED(String)
+09:19:31:166 DEBUG 78528 --- [Thread-608] c.h.t.m.L.selectList                     : <==      Total: 0
+09:20:03:843 DEBUG 78528 --- [Thread-610] c.h.t.m.L.selectList                     : ==>  Preparing: SELECT id,event_type,payload,status,create_time,update_time FROM local_event_outbox WHERE (event_type = ? AND status = ?) LIMIT 100
+09:20:03:843 DEBUG 78528 --- [Thread-610] c.h.t.m.L.selectList                     : ==> Parameters: RESTORE_ITEM_STOCK(String), 0(Integer)
+09:20:03:857 DEBUG 78528 --- [Thread-610] c.h.t.m.L.selectList                     : <==      Total: 0
+09:20:03:866 DEBUG 78528 --- [Thread-611] c.h.t.m.L.selectList                     : ==>  Preparing: SELECT id,event_type,payload,status,create_time,update_time FROM local_event_outbox WHERE (status = ? AND event_type = ?) LIMIT 100
+09:20:03:866 DEBUG 78528 --- [Thread-611] c.h.t.m.L.selectList                     : ==> Parameters: 0(Integer), ORDER_CREATED(String)
+09:20:03:892 DEBUG 78528 --- [Thread-611] c.h.t.m.L.selectList                     : <==      Total: 0
