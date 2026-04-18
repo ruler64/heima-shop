@@ -12,6 +12,7 @@ spring:
           - data-id: shared-jdbc.yaml
           - data-id: shared-log.yaml
           - data-id: shared-swagger.yaml
-          - data-id: shared-seata.yaml
+         # - data-id: shared-seata.yaml
+          - data-id: shared-mq.yaml
 #      discovery: # 服务发现配置，用于nacos环境隔离，但是隔离后的服务之间无法调用无法发现
 #        namespace: 782bbf1c-e82f-4e60-bee2-8cc08935045d # dev环境下的id

@@ -1,6 +1,7 @@
 package com.hmall.trade.domain.po;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -29,7 +30,9 @@ public class LocalEventOutbox {
      */
     private Integer status;
 
+    @TableField("create_time")
     private LocalDateTime createTime;
 
+    @TableField("update_time")
     private LocalDateTime updateTime;
 }

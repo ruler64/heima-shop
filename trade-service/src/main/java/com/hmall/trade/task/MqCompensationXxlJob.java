@@ -23,66 +23,61 @@ public class MqCompensationXxlJob {
     private final StringRedisTemplate stringRedisTemplate;
     private final RabbitMqHelper rabbitMqHelper;
 
+    private static final int OUTBOX_BUCKETS = 16;
+    private static final String OUTBOX_KEY_PREFIX = "trade:local_msg_outbox:{stock}:";
+
     /**
      * 任务名: mqCompensationJob (去 XXL-JOB Admin 界面配置该名称)
      */
     @XxlJob("mqCompensationJob")
     public void compensatePendingMessages() {
-        String outboxKey = "trade:local_msg_outbox";
-
         // XxlJobHelper.log 可以在 XXL-JOB 调度中心页面直接看到执行日志
-        XxlJobHelper.log("MQ补偿任务启动: 开始扫描 Redis 待发消息表...");
-
-        // 1. 获取 Redis Hash 中所有积压的待发消息
-        Map<Object, Object> pendingMessages = stringRedisTemplate.opsForHash().entries(outboxKey);
-
-        if (pendingMessages == null || pendingMessages.isEmpty()) {
-            XxlJobHelper.log("当前无积压的 MQ 消息，任务结束。");
-            return; // 顺利执行完毕
-        }
-
-        XxlJobHelper.log("发现 {} 条滞留消息，开始重试投递...", pendingMessages.size());
+        XxlJobHelper.log("MQ补偿任务启动: 开始扫描 Redis 分桶 Outbox...");
 
         int successCount = 0;
         int failCount = 0;
 
-        for (Map.Entry<Object, Object> entry : pendingMessages.entrySet()) {
-            String orderIdStr = (String) entry.getKey();
-            String msgJson = (String) entry.getValue();
+        for (int bucket = 0; bucket < OUTBOX_BUCKETS; bucket++) {
+            String outboxKey = OUTBOX_KEY_PREFIX + bucket;
 
-            try {
-                Map<String, Object> msg = JSON.parseObject(msgJson, Map.class);
+            Map<Object, Object> pendingMessages = stringRedisTemplate.opsForHash().entries(outboxKey);
+            if (pendingMessages == null || pendingMessages.isEmpty()) {
+                continue;
+            }
 
-                // 2. 重新投递到 MQ
-                rabbitMqHelper.sendMessageWithConfirm(
-                        MQConstants.ASYNC_ORDER_EXCHANGE,
-                        MQConstants.ASYNC_ORDER_KEY,
-                        msg,
-                        MQConstants.MAX_RETRY_TIMES
-                );
+            XxlJobHelper.log("桶 {} 发现 {} 条滞留消息，开始重试投递...", bucket, pendingMessages.size());
 
-                // 3. 投递成功后抹除记录
-                stringRedisTemplate.opsForHash().delete(outboxKey, orderIdStr);
-                XxlJobHelper.log("订单 {} 补偿投递 MQ 成功", orderIdStr);
-                successCount++;
+            for (Map.Entry<Object, Object> entry : pendingMessages.entrySet()) {
+                String orderIdStr = (String) entry.getKey();
+                String msgJson = (String) entry.getValue();
 
-            } catch (Exception e) {
-                // 单个消息失败不要抛出异常中断整个循环，记录日志继续处理下一个
-                XxlJobHelper.log("订单 {} 补偿投递 MQ 失败，异常信息: {}", orderIdStr, e.getMessage());
-                log.error("订单 {} 补偿失败", orderIdStr, e);
-                failCount++;
+                try {
+                    Map<String, Object> msg = JSON.parseObject(msgJson, Map.class);
+
+                    rabbitMqHelper.sendMessageWithConfirm(
+                            MQConstants.ASYNC_ORDER_EXCHANGE,
+                            MQConstants.ASYNC_ORDER_KEY,
+                            msg,
+                            MQConstants.MAX_RETRY_TIMES
+                    );
+
+                    stringRedisTemplate.opsForHash().delete(outboxKey, orderIdStr);
+                    XxlJobHelper.log("订单 {} 补偿投递 MQ 成功", orderIdStr);
+                    successCount++;
+
+                } catch (Exception e) {
+                    XxlJobHelper.log("订单 {} 补偿投递 MQ 失败，异常信息: {}", orderIdStr, e.getMessage());
+                    log.error("订单 {} 补偿失败", orderIdStr, e);
+                    failCount++;
+                }
             }
         }
 
-        // 总结汇报
         String resultMsg = String.format("任务执行完成。成功补偿: %d 条，失败: %d 条", successCount, failCount);
         XxlJobHelper.log(resultMsg);
 
-        // 如果有失败的，让 XXL-JOB 的调度状态变红报警
-        if (failCount > 0) {
-            XxlJobHelper.handleFail(resultMsg);
-        } else {
-            XxlJobHelper.handleSuccess(resultMsg);
-        }
+        // 这里不要因为单条补偿失败就把整次调度判成失败。
+        // 失败的消息仍然保留在 Redis 中，交给下一次定时任务继续重试即可。
+        XxlJobHelper.handleSuccess(resultMsg);
     }
 }

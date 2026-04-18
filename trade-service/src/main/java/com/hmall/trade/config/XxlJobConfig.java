@@ -22,6 +22,9 @@ public class XxlJobConfig {//Spring Boot 需要一个配置类来初始化 XXL-J
     @Value("${xxl.job.executor.appName}")
     private String appName;
 
+    @Value("${xxl.job.executor.ip:}")
+    private String ip;
+
     @Value("${xxl.job.executor.port}")
     private int port;
 
@@ -37,6 +40,9 @@ public class XxlJobConfig {//Spring Boot 需要一个配置类来初始化 XXL-J
         XxlJobSpringExecutor xxlJobSpringExecutor = new XxlJobSpringExecutor();
         xxlJobSpringExecutor.setAdminAddresses(adminAddresses);
         xxlJobSpringExecutor.setAppname(appName);
+        if (ip != null && !ip.trim().isEmpty()) {
+            xxlJobSpringExecutor.setIp(ip);
+        }
         xxlJobSpringExecutor.setPort(port);
         xxlJobSpringExecutor.setAccessToken(accessToken);
         xxlJobSpringExecutor.setLogPath(logPath);

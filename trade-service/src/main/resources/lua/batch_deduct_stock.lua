@@ -7,21 +7,6 @@ local outbox_key = KEYS[item_count + 1]
 local order_id = ARGV[item_count + 1]
 local payload = ARGV[item_count + 2]
 
--- 1. 遍历校验所有商品的库存是否充足//无基于 Redis 的“内存消息表”，会有双写一致性漏洞
---for i, key in ipairs(KEYS) do
---    local stock = tonumber(redis.call('get', key))
---    local demand = tonumber(ARGV[i])
---    if stock == nil or stock < demand then
---        -- 库存不足，直接返回当前处理的失败索引对应的ID（这里可以约定返回特定的错误码或ID）
---        return i
---    end
---end
---
----- 2. 校验全通过，所有库存都充足，执行批量扣减
---for i, key in ipairs(KEYS) do
---    local demand = tonumber(ARGV[i])
---    redis.call('decrby', key, demand)
---end
 -- 1. 遍历校验所有商品的库存是否充足，Lua脚本不能回滚只能保证原子性，所以防止中途库存不够导致数据不一致问题
 for i=1, item_count do
     local stock = tonumber(redis.call('get', KEYS[i]))

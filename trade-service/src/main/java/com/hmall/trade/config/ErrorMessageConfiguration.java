@@ -1,6 +1,6 @@
 package com.hmall.trade.config;
 
-import com.alibaba.druid.sql.visitor.functions.Bin;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

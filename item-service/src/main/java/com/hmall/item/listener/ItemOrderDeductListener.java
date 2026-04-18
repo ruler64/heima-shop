@@ -1,7 +1,5 @@
 package com.hmall.item.listener;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.hmall.api.dto.OrderDetailDTO;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.utils.RabbitMqHelper;
@@ -21,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -35,15 +34,21 @@ public class ItemOrderDeductListener {
             exchange = @Exchange(name = MQConstants.ORDER_EVENT_EXCHANGE, type = ExchangeTypes.TOPIC),
             key = MQConstants.ORDER_ITEM_DEDUCT_KEY
     ))
-    public void listenOrderCreated(String payload,
+    public void listenOrderCreated(Map<String, Object> msg,
                                    Channel channel,
-                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {//有问题，应该手动ack吧
-        // 解析消息
-        JSONObject json = JSON.parseObject(payload);
-        Long orderId = json.getLong("orderId");
-
+                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+        Long orderId = msg.get("orderId") == null ? null : Long.valueOf(String.valueOf(msg.get("orderId")));
         try {
-            List<OrderDetailDTO> details = json.getJSONArray("details").toJavaList(OrderDetailDTO.class);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> detailsMap = (List<Map<String, Object>>) msg.get("details");
+            List<OrderDetailDTO> details = detailsMap.stream()
+                    .map(detail -> {
+                        OrderDetailDTO dto = new OrderDetailDTO();
+                        dto.setItemId(detail.get("itemId") == null ? null : Long.valueOf(String.valueOf(detail.get("itemId"))));
+                        dto.setNum(detail.get("num") == null ? null : Integer.valueOf(String.valueOf(detail.get("num"))));
+                        return dto;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
 
             // 1. 执行数据库扣减
             itemService.deductStock(orderId, details);
@@ -59,7 +64,7 @@ public class ItemOrderDeductListener {
             rabbitMqHelper.sendMessageWithConfirm(
                     MQConstants.CANCEL_ORDER_EXCHANGE,
                     MQConstants.CANCEL_ORDER_KEY,
-                    payload, // 把原始的 payload 原封不动传回去，里面有 orderId 和 details，方便回滚
+                    msg,
                     MQConstants.MAX_RETRY_TIMES
             );
 

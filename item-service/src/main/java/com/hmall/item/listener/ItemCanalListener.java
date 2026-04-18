@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.hmall.item.config.ItemCachePreloader;
+import com.hmall.item.constants.MQConstants;
 import com.hmall.item.domain.po.Item;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
@@ -34,18 +35,20 @@ public class ItemCanalListener {
 
     @RabbitListener(bindings = @QueueBinding(
             // 监听 Canal 推送 binlog 的专属队列
-            value = @Queue(name = "canal.item.sync.queue", durable = "true"),
-            exchange = @Exchange(name = "canal.exchange", type = ExchangeTypes.TOPIC),
-            key = "canal.update.item"
+            value = @Queue(name = MQConstants.ITEM_CANAL_CHANGE_QUEUE, durable = "true"),
+            exchange = @Exchange(name = MQConstants.ITEM_CANAL_CHANGE_EXCHANGE, type = ExchangeTypes.TOPIC),
+            key = MQConstants.ITEM_CANAL_CHANGE_KEY
     ))
-    public void listenItemBinlog(String payload, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
+    public void listenItemBinlog(Message message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
+            // 🌟 手动从 message body 中获取原始字节并转为字符串
+            String payload = new String(message.getBody());
             JSONObject jsonObject = JSON.parseObject(payload);
 
             // 1. 获取变更表名和变更类型
             String table = jsonObject.getString("table");
             String type = jsonObject.getString("type");
-
+            log.info("收到Canal消息，表名：{}, 类型：{}", table, type);
             // 2. 只关心 item 表的 UPDATE 动作
             if ("item".equals(table) && "UPDATE".equals(type)) {
 

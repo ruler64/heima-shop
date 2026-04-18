@@ -27,7 +27,6 @@ import com.hmall.trade.mapper.LocalEventOutboxMapper;
 import com.hmall.trade.mapper.OrderMapper;
 import com.hmall.trade.service.IOrderDetailService;
 import com.hmall.trade.service.IOrderService;
-import io.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -36,6 +35,7 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -67,19 +67,32 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final ItemClient itemClient;
     private final RedissonClient redissonClient;
     private final IOrderDetailService detailService;
-    private final CartClient cartClient;
+//    private final CartClient cartClient;
     private final RabbitTemplate rabbitTemplate;
     private final RabbitMqHelper rabbitMqHelper;
     private final StringRedisTemplate stringRedisTemplate;
     private final LocalEventOutboxMapper localEventOutboxMapper;
-    public static final String ITEM_DETAIL_KEY_PREFIX = "item:detail:";
-    // 1. 初始化 Lua 脚本
-    private static final DefaultRedisScript<Long> DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT;
-    static {
-        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT = new DefaultRedisScript<>();
-        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setLocation(new ClassPathResource("lua/deduct_stock.lua"));
-        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setResultType(Long.class);
+    // NOTE: Redis Cluster Lua 脚本多 key 运行要求所有 KEYS 落在同一个 hash slot。
+    // 因此这里在 key 里使用统一 hash tag：{stock}。
+    public static final String ITEM_STOCK_KEY_PREFIX = "item:stock:{stock}:";
+
+    private static final int OUTBOX_BUCKETS = 16;
+    private static final String OUTBOX_KEY_PREFIX = "trade:local_msg_outbox:{stock}:";
+
+    private String buildOutboxKey(Long orderId) {
+        long bucket = Math.floorMod(orderId, OUTBOX_BUCKETS);
+        return OUTBOX_KEY_PREFIX + bucket;
     }
+    // 1. 初始化 Lua 脚本
+    // 【注入配置类中定义的 Lua 脚本】
+    // 【注入配置类中定义的 Lua 脚本】
+    @Qualifier("deductStockAndSaveMsgScript")
+    private final DefaultRedisScript<Long> DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT;
+//    static {
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT = new DefaultRedisScript<>();
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setLocation(new ClassPathResource("lua/batch_deduct_stock.lua"));
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setResultType(Long.class);
+//    }
     /**
      * 定义一段 Lua 脚本：兼顾【幂等校验】和【批量恢复库存】的原子操作
      * 逻辑：
@@ -97,92 +110,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     "else " +
                     "   return 0 " +
                     "end";
+//    static {
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT = new DefaultRedisScript<>();
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setLocation(new ClassPathResource("lua/batch_deduct_stock.lua"));
+//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setResultType(Long.class);
+//    }
 
     private static final DefaultRedisScript<Long> RESTORE_SCRIPT = new DefaultRedisScript<>(RESTORE_STOCK_LUA, Long.class);
 
-    //private final ICartService cartService;
-//    @Override
-//    // 注意：此处不再加 @GlobalTransactional，因为是异步化处理
-//    public Long createOrder(OrderFormDTO orderFormDTO) {
-//        // ================= 【新代码：多商品并发预扣减】 =================
-//        // 1. 获取本次下单的所有商品明细
-//        List<OrderDetailDTO> details = orderFormDTO.getDetails();
-//        // 2. 收集所有的 RLock，准备组装联锁
-//        List<RLock> locks = new ArrayList<>();
-//        // 为了防止死锁的极致稳妥做法：先对商品ID进行排序 (虽然MultiLock有机制，但业务层排序最安全)
-//        details.sort(Comparator.comparing(OrderDetailDTO::getItemId));
-//        for (OrderDetailDTO detail : details) {
-//            String lockKey = "lock:item:" + detail.getItemId();
-//            locks.add(redissonClient.getLock(lockKey));
-//        }
-//        // 3. 将 List 转换为数组，并创建 Redisson 联锁 (MultiLock)
-//        RLock multiLock = redissonClient.getMultiLock(locks.toArray(new RLock[0]));
-//        try {
-//            // 4. 尝试获取联锁，等待10秒。获取成功后，所有相关的商品都被锁住了！看门狗同样生效。
-//            if (multiLock.tryLock(10, TimeUnit.SECONDS)) {
-//                // 用于记录已经扣减成功的商品，方便一旦发生异常时进行回滚补偿
-//                List<OrderDetailDTO> deductedItems = new ArrayList<>();
-//                try {
-//                    // 5. 遍历扣减 Redis 库存
-//                    for (OrderDetailDTO detail : details) {
-//                        Long itemId = detail.getItemId();
-//                        Integer num = detail.getNum();
-//                        String stockKey = "item:stock:" + itemId;
-//                        // 执行原子扣减
-//                        Long remainStock = redissonClient.getAtomicLong(stockKey).addAndGet(-num);
-//                        if (remainStock < 0) {
-//                            // 扣减失败，立刻把当前加为负数的加回来
-//                            redissonClient.getAtomicLong(stockKey).addAndGet(num);
-//                            // 抛出异常，跳到 catch 块执行全体补偿
-//                            throw new BizIllegalException("商品 " + itemId + " 库存不足！");
-//                        }
-//                        // 记录扣减成功的商品
-//                        deductedItems.add(detail);
-//                    }
-//                    // 6. 所有商品预扣减全部成功！提前生成订单号
-//                    Long orderId = IdWorker.getId();
-//                    // 7. 封装消息发送到 MQ (这部分逻辑不变)
-//                    Map<String, Object> msg = new HashMap<>();
-//                    msg.put("orderId", orderId);
-//                    msg.put("userId", UserContext.getUser());
-//                    msg.put("orderForm", orderFormDTO);
-////                    rabbitTemplate.convertAndSend(
-////                            MQConstants.ASYNC_ORDER_EXCHANGE,
-////                            MQConstants.ASYNC_ORDER_KEY,
-////                            msg
-////                    );
-//                    //设置最大重试次数
-//                    int maxRetries=3;
-//                    //利用common封装的mq重试机制发送消息
-//                    rabbitMqHelper.sendMessageWithConfirm(MQConstants.ASYNC_ORDER_EXCHANGE,
-//                            MQConstants.ASYNC_ORDER_KEY,
-//                            msg,maxRetries);
-//                    log.info("多商品订单已提交异步处理，订单号: {}", orderId);
-//                    return orderId;
-//                } catch (BizIllegalException e) {
-//                    // 💥【核心补偿逻辑】如果中间某个商品库存不足，必须把前面扣减成功的全加回来！
-//                    log.warn("扣减过程发生库存不足，执行回滚补偿...");
-//                    for (OrderDetailDTO deducted : deductedItems) {
-//                        String stockKey = "item:stock:" + deducted.getItemId();
-//                        redissonClient.getAtomicLong(stockKey).addAndGet(deducted.getNum());
-//                    }
-//                    throw e; // 继续向上抛出，告诉前端库存不足
-//                }
-//            }
-//        } catch (InterruptedException e) {
-//            Thread.currentThread().interrupt();
-//            throw new BizIllegalException("系统繁忙，请稍后再试");
-//        } finally {
-//            // 8. 释放联锁 (底层会自动释放所有相关的子锁)
-//            // 注意：因为涉及到多个锁，只要当前线程持有其中任何一个锁，都应该尝试释放
-//            try {
-//                multiLock.unlock();
-//            } catch (Exception e) {
-//                log.warn("释放联锁发生异常（可能是部分锁已过期），忽略", e);
-//            }
-//        }
-//        throw new BizIllegalException("获取商品资源失败，请重试");
-//    }
+
     @Override
     public Long createOrder(OrderFormDTO orderFormDTO) {
         Long userId = UserContext.getUser();
@@ -202,15 +138,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         int i = 0;
         for (; i < orderFormDTO.getDetails().size(); i++) {
             OrderDetailDTO detail = orderFormDTO.getDetails().get(i);
-            keys.add( ITEM_DETAIL_KEY_PREFIX+ detail.getItemId());
+            keys.add(ITEM_STOCK_KEY_PREFIX + detail.getItemId());
             args[i] = String.valueOf(detail.getNum());
         }
-        // 【核心新增】指定 Redis 消息表的 Key，并将 payload 传入；如果担心所有order都存一个key的大key问题，可以在 Redis 里约定 16 个 Hash 表
-        //trade:local_msg_outbox:0~trade:local_msg_outbox:15，然后写入时:把 orderId % 16，补偿时:定时任务用多线程，分别去捞这 16 个桶即可
-        keys.add("trade:local_msg_outbox");
+        // Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
+        String outboxKey = buildOutboxKey(orderId);
+        // 这里仍然沿用 outbox 存储消息，确保 MQ 双写一致性。
+        // 【修复点】：必须把 outboxKey 传给 KEYS，把 orderId 和 msgJson 传给 ARGV
+        keys.add(outboxKey);
         args[i] = String.valueOf(orderId);
         args[i + 1] = msgJson;
-
         // 3. 执行 Lua 脚本，原子性扣减库存 + 保存消息！
         // 此时就算下一秒机器突然断电炸了，只要 Lua 执行成功，Redis 里必定同时有扣减后的库存和这条待发送的消息。
         Long result = stringRedisTemplate.execute(DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT, keys, args);
@@ -227,7 +164,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     msg, MQConstants.MAX_RETRY_TIMES);
 
             // 5. 【发送成功】立刻从 Redis 消息表中删掉它，代表消费完成
-            stringRedisTemplate.opsForHash().delete("trade:local_msg_outbox", String.valueOf(orderId));
+            stringRedisTemplate.opsForHash().delete(outboxKey, String.valueOf(orderId));
             log.info("订单已实时发往 MQ，并清理 Redis 暂存表，订单号: {}", orderId);
 
         } catch (Exception e) {
@@ -242,6 +179,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     // 【大厂细节 1：剔除 Seata】摒弃沉重的分布式事务，改用普通的本地事务。跨服务的一致性交由 MQ 重试来保障。
     @Transactional(rollbackFor = Exception.class)
     public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO) {
+        log.info("开始异步落库，orderId={}, userId={}", orderId, userId);
 
         // 【大厂细节 2：前置幂等性防御】
         // 防止极端情况下（如 Redis 锁失效），相同的 orderId 再次进入落库逻辑。
@@ -257,10 +195,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 .collect(Collectors.toMap(OrderDetailDTO::getItemId, OrderDetailDTO::getNum));
         Set<Long> itemIds = itemNumMap.keySet();
 
+        log.info("异步落库查询商品信息，orderId={}, itemIds={}", orderId, itemIds);
         List<ItemDTO> items = itemClient.queryItemByIds(itemIds);
         if (items == null || items.size() < itemIds.size()) {
             throw new BadRequestException("商品不存在");
         }
+        log.info("异步落库查询商品信息完成，orderId={}, itemCount={}", orderId, items.size());
 
         int total = 0;
         for (ItemDTO item : items) {
@@ -280,15 +220,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 即使绕过了上面的 getById，由于 orderId 是主键，这里的 save 也会抛出 DuplicateKeyException，
         // 配合我们之前在 OrderMQListener 里写的 catch(DuplicateKeyException) 逻辑，形成完美闭环。
         this.save(order);
+        log.info("异步落库保存订单主表成功，orderId={}", orderId);
 
         // 3. 保存订单详情
         List<OrderDetail> details = buildDetails(orderId, items, itemNumMap);
         detailService.saveBatch(details);
+        log.info("异步落库保存订单明细成功，orderId={}, detailCount={}", orderId, details.size());
         // ================== 【大厂绝杀重构】 ==================
         // 3. 彻底删除 itemClient 和 cartClient 的调用！
         // 4. 将需要通知下游的消息，组装成 JSON，写入本地消息表
         Map<String, Object> eventPayload = new HashMap<>();
         eventPayload.put("orderId", orderId);
+        eventPayload.put("userId", userId);
         eventPayload.put("details", detailDTOS);
         eventPayload.put("itemIds", itemIds);
 
@@ -297,16 +240,37 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         outbox.setPayload(JSON.toJSONString(eventPayload));
         outbox.setStatus(0); // 待发送
         localEventOutboxMapper.insert(outbox); // 【核心】和保存订单在同一个事务里！
+        log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}", orderId, outbox.getId());
 
         // 5. 使用 afterCommit 作为“实时发送”的优化手段（尽最大努力）
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 try {
-                    // 事务提交后，立刻发送给 RabbitMQ 的 Fanout Exchange (广播),购物车和item商品服务应该有相应的监听广播的listener但我没创建，省事
+                    // 事务提交后，立刻发送给 RabbitMQ 的 Fanout Exchange (广播),购物车和item商品服务应该有相应的监听广播的listener
                     rabbitMqHelper.sendMessageWithConfirm(
-                            "trade.topic.exchange", "order.created", eventPayload, 3);
+                            MQConstants.ORDER_EVENT_EXCHANGE,
+                            MQConstants.ORDER_ITEM_DEDUCT_KEY,
+                            eventPayload,
+                            3);
 
+                    // 通知购物车清理已下单商品
+                    rabbitMqHelper.sendMessageWithConfirm(
+                            MQConstants.ORDER_CART_CLEAR_EXCHANGE,
+                            MQConstants.ORDER_CART_CLEAR_KEY,
+                            eventPayload,
+                            3);
+                    // 给自己发送延迟消息。确认订单是否已支付
+                    rabbitTemplate.convertAndSend(
+                            MQConstants.DELAY_EXCHANGE_NAME,
+                            MQConstants.DELAY_ORDER_KEY,
+                            orderId,
+                            message -> {
+                                message.getMessageProperties().setDelay(15 * 60 * 1000); // 15分钟
+                                return message;
+                            }
+                    );
+                    log.info("订单 {} 事务提交成功，已发出15分钟延迟关单检测消息", orderId);
                     // 发送成功，把 outbox 状态改为 1 (异步去改即可)
                     localEventOutboxMapper.updateStatus(outbox.getId(), 1);
                 } catch (Exception e) {

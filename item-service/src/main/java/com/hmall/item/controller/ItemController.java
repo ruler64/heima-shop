@@ -1,7 +1,5 @@
 package com.hmall.item.controller;
 
-
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmall.api.dto.ItemDTO;
 import com.hmall.api.dto.OrderDetailDTO;
 import com.hmall.common.domain.PageDTO;
@@ -91,13 +89,13 @@ public class ItemController {
 
     @ApiOperation("批量扣减库存")
     @PutMapping("/stock/deduct")
-    public void deductStock(Long orderId,@RequestBody List<OrderDetailDTO> items){
+    public void deductStock(@RequestParam("orderId") Long orderId, @RequestBody List<OrderDetailDTO> items){
         itemService.deductStock(orderId,items);
     }
 
     @ApiOperation("批量增加库存")
     @PutMapping("/stock/increase")
-    public void increaseStock(Long orderId, @RequestBody List<OrderDetailDTO> items){
+    public void increaseStock(@RequestParam("orderId") Long orderId, @RequestBody List<OrderDetailDTO> items){
         itemService.increaseStock(orderId,items);
     }
 }

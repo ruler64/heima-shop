@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnClass(value = {MessageConverter.class, RabbitTemplate.class})
 public class MqConfig {
     @Bean
-    @ConditionalOnBean(ObjectMapper.class)
+    //@ConditionalOnBean(ObjectMapper.class)
     public MessageConverter messageConverter(ObjectMapper mapper){
         // 1.定义消息转换器
         Jackson2JsonMessageConverter jackson2JsonMessageConverter = new Jackson2JsonMessageConverter(mapper);

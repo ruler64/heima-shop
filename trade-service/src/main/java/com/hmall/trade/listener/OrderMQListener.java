@@ -1,5 +1,9 @@
 package com.hmall.trade.listener;
 
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.utils.UserContext;
 import com.hmall.trade.constants.MQConstants;
 import com.hmall.trade.domain.dto.OrderFormDTO;
@@ -8,14 +12,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.*;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import com.rabbitmq.client.Channel;
 import org.springframework.amqp.core.Message;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -23,7 +25,16 @@ import java.util.concurrent.TimeUnit;
 public class OrderMQListener {
 
     private final OrderServiceImpl orderService;
-    private final StringRedisTemplate stringRedisTemplate; // 注入 Redis 模板
+
+    private Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.valueOf(String.valueOf(value));
+    }
 
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(name = MQConstants.ASYNC_ORDER_QUEUE, durable = "true"),
@@ -32,9 +43,7 @@ public class OrderMQListener {
     ))
     public void listenAsyncOrder(Map<String, Object> msg, Channel channel, Message message) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();//MQ消息的递送标签,message是壳子并不是实际数据
-        Long orderId = (Long) msg.get("orderId");
-        Long userId = (Long) msg.get("userId");
-        OrderFormDTO orderFormDTO = (OrderFormDTO) msg.get("orderForm");
+        Long orderId = null;
         /*
         * 场景 A（超时其实成功了）： 订单 DB 插入成功 -> 调用库存 RPC -> 库存服务其实扣减成功了，但网络卡了没按时返回 ->
         * 你的代码抛出 RuntimeException -> 订单 DB 回滚。结果： 此时库存扣了，订单没了。虽然依靠 MQ 的重试和
@@ -48,15 +57,24 @@ public class OrderMQListener {
             最终结果：库存被扣了，订单彻底丢了，消息也没了，发生严重的资损！
         * */
         try {
+            orderId = toLong(msg.get("orderId"));
+            Long userId = toLong(msg.get("userId"));
+            OrderFormDTO orderFormDTO = JSON.parseObject(JSON.toJSONString(msg.get("orderForm")), OrderFormDTO.class);
+            log.info("开始消费异步下单消息，orderId={}, userId={}", orderId, userId);
             UserContext.setUser(userId);
             // 直接调用落库，防重交给 DB 的唯一索引
             orderService.handleDbOrder(orderId, userId, orderFormDTO);
             channel.basicAck(deliveryTag, false);
+            log.info("异步下单消息消费成功并ACK，orderId={}", orderId);
         } catch (DuplicateKeyException e) {
             // 如果报主键冲突，说明已经被成功消费过了，直接放行
             log.warn("订单 {} 已存在，判定为重复消费兜底成功，直接 ACK。", orderId);
             channel.basicAck(deliveryTag, false);
-        } catch (Exception e) {
+        } catch (BadRequestException | JSONException e) {
+            // 1. 业务型/不可恢复异常：比如商品不存在、解析错误。重试没用，直接丢弃或进入死信队列
+            log.error("发生不可恢复的业务异常，拒绝消息（扔进死信队列）。订单号: {}", orderId, e);
+            channel.basicNack(deliveryTag, false, false); // 注意：最后一个参数是 false！
+        }catch (Exception e) {
             log.error("订单异步落库发生异常，准备触发 MQ 重试。订单号: {}", orderId, e);
             // 发生业务/网络异常，无条件 NACK 让 MQ 不断重试
             channel.basicNack(deliveryTag, false, true);

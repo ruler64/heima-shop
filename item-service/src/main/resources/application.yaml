@@ -8,16 +8,22 @@ hm:
     title: "黑马商城商品服务接口文档"
     package: com.hmall.item.controller
 spring:
+#  mvc:
+#    pathmatch:
+#      matching-strategy: ant_path_matcher
+  elasticsearch:
+    rest:
+      uris: http://192.168.31.128:9200
   rabbitmq:
     host: 192.168.31.128
     port: 5672 # 端口
     virtual-host: /hmall # 虚拟主机
     username: hmall # 用户名
     password: 123 # 密码
-    connection-timeout: 1s # 设置MQ的连接超时时间
+    connection-timeout: 5s # 1s 在高并发重连时过于激进，容易导致监听容器频繁重启
     template:
       retry:
-        enabled: true # 开启发送者超时重试机制，防止由于网络波动，可能会出现的发送者连接MQ失败的情况
+        enabled: false # 当前采用手动ACK/NACK与业务幂等，自行控制重试，避免Spring自动转发error.direct掩盖真实异常
         initial-interval: 1000ms # 失败后的初始等待时间
         multiplier: 1 # 失败后下次的等待时间倍数，下次的等待时常 = initial-interval * multiplier
         max-attempts: 3 # 最大重试次数
@@ -25,22 +31,57 @@ spring:
     publisher-returns: true # 发送者确认机制，方法一
     listener:
       simple:
-        prefetch: 1 #每次处理一条消息，谁处理的快谁就处理的多
+        prefetch: 10 #每次处理一条消息（上调以提升吞吐）
+        concurrency: 8
+        max-concurrency: 16
         acknowledge-mode: manual # 消费者确认机制，springAMQP自动处理，若nack则再次投递消息，auto有问题服务器断电会丢失消息
         retry:
-          enabled: true # 开启消费者失败重试机制，消费者异常时利用本地重试，而不是无限的requeue到mq与mq之间无限投递重试
+          enabled: false # 当前采用手动ACK/NACK与业务幂等，自行控制重试，避免Spring自动接管失败消息
           initial-interval: 1000ms # 失败后的初始等待时间
           multiplier: 1 # 失败后下次的等待时间倍数，下次的等待时常 = initial-interval * multiplier
           max-attempts: 3 # 最大重试次数
           stateless: true # true无状态；false有状态。如果业务中包含"事务"Transactional，这里才改为false
+#  redis:
+#    host: 127.0.0.1      # 你的 Redis 服务器地址
+#    port: 6379           # Redis 端口
+#    password:            # 如果有密码填这里，没有就留空
+#    database: 0          # 使用的数据库索引，默认0
+#    lettuce:
+#      pool:
+#        max-active: 8    # 连接池最大连接数
+#        max-wait: -1ms   # 连接池最大阻塞等待时间
+#        max-idle: 8      # 连接池中的最大空闲连接
+#        min-idle: 0      # 连接池中的最小空闲连接
+
   redis:
-    host: 127.0.0.1      # 你的 Redis 服务器地址
-    port: 6379           # Redis 端口
-    password:            # 如果有密码填这里，没有就留空
-    database: 0          # 使用的数据库索引，默认0
+    cluster:
+      nodes:
+        - 192.168.31.128:7001
+        - 192.168.31.128:7002
+        - 192.168.31.128:7003
+        - 192.168.31.128:7004
+        - 192.168.31.128:7005
+        - 192.168.31.128:7006
     lettuce:
       pool:
         max-active: 8    # 连接池最大连接数
         max-wait: -1ms   # 连接池最大阻塞等待时间
-        max-idle: 8      # 连接池中的最大空闲连接
+        max-idle: 16      # 连接池中的最大空闲连接
         min-idle: 0      # 连接池中的最小空闲连接
+xxl:
+  job:
+    admin:
+      # 调度中心的地址
+      addresses: http://192.168.31.128:8088/xxl-job-admin
+    accessToken: default_token # 如果调度中心配置了 token，这里必须保持一致
+    executor:
+      # 执行器名称，在调度中心配置任务时要用到
+      appName: item-service-executor
+      # 执行器 IP，固定为调度中心可访问的宿主机地址
+      ip: 192.168.31.128
+      # 执行器端口，如果你在一台物理机上启动多个实例，端口需要不一样 (默认9999)
+      port: 9998
+      # 执行器运行日志文件存储磁盘路径
+      logPath: /data/applogs/xxl-job/jobhandler
+      # 执行器日志文件保存天数
+      logRetentionDays: 30

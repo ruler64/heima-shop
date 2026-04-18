@@ -33,6 +33,8 @@ public interface MQConstants {
     // 购物车服务监听的队列
     String ORDER_CART_CLEAR_QUEUE = "cart.order.created.queue";
     String ORDER_CART_CLEAR_KEY = "order.created";
+    // 购物车服务实际监听的交换机名（在 cart-service 内部）
+    String ORDER_CART_CLEAR_EXCHANGE = "direct.order.cart.direct";
 
     /**
      * 商品库存恢复队列 (逆向流程)

@@ -69,11 +69,11 @@ public class RedisRestoreJobHandler {
 
                 // 3. 准备 Lua 参数
                 List<String> keys = new ArrayList<>();
-                keys.add("order:restore:idempotent:" + orderId);
+                keys.add("order:restore:idempotent:{stock}:" + orderId);
                 Object[] args = new Object[details.size()];
 
                 for (int i = 0; i < details.size(); i++) {
-                    keys.add("item:stock:" + details.get(i).getItemId());
+                    keys.add("item:stock:{stock}:" + details.get(i).getItemId());
                     args[i] = String.valueOf(details.get(i).getNum());
                 }
 

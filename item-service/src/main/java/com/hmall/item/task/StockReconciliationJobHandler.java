@@ -1,7 +1,7 @@
 package com.hmall.item.task;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.hmall.item.config.ItemCachePreloader;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.hmall.item.constants.StockVersionConstants;
 import com.hmall.item.domain.po.Item;
 import com.hmall.item.service.IItemService;
 import com.xxl.job.core.context.XxlJobHelper;
@@ -14,11 +14,13 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
- * 全量库存离线对账与补偿任务
- * 建议调度时间：每天凌晨 03:00:00 (Cron: 0 0 3 * * ?)
+ * 方案 B：库存对账任务
+ * <p>
+ * 职责：按商品逐批比对 MySQL 与 Redis 库存，并修正 Redis 侧异常值。
+ * <p>
+ * 规则：MySQL 作为最终事实源；Redis 的库存值和版本号如果异常，按 MySQL 覆盖修复。
  */
 @Slf4j
 @Component
@@ -28,80 +30,51 @@ public class StockReconciliationJobHandler {
     private final IItemService itemService;
     private final StringRedisTemplate stringRedisTemplate;
 
-    // Redis 中库存的 Key 前缀
-    private static final String ITEM_STOCK_KEY_PREFIX = ItemCachePreloader.ITEM_DETAIL_KEY_PREFIX;
-
     @XxlJob("stockReconciliationJob")
     public void execute() {
-        XxlJobHelper.log("开始执行凌晨库存全量对账任务...");
-        long startTime = System.currentTimeMillis();
+        XxlJobHelper.log("方案B库存对账任务启动...");
 
-        int pageSize = 1000; // 每次处理 1000 条，防 OOM
-        int pageNo = 1;
-        int diffCount = 0;   // 记录出现差异的商品数量
+        int pageSize = 500;
+        long lastId = 0L;
+        int diffCount = 0;
 
         while (true) {
-            // 1. 分批从 MySQL 中查出已上架的商品库存
-            Page<Item> page = itemService.lambdaQuery()
-                    .eq(Item::getStatus, 1) // 1 表示上架状态
-                    .select(Item::getId, Item::getStock) // 性能优化：只查 ID 和 Stock
-                    .page(new Page<>(pageNo, pageSize));
+            List<Item> items = itemService.list(new LambdaQueryWrapper<Item>()
+                    .gt(Item::getId, lastId)
+                    .eq(Item::getStatus, 1)
+                    .orderByAsc(Item::getId)
+                    .last("LIMIT " + pageSize));
 
-            List<Item> records = page.getRecords();
-            if (records == null || records.isEmpty()) {
-                break; // 处理完毕
+            if (items == null || items.isEmpty()) {
+                break;
             }
 
-            // 2. 批量构建 Redis 的 Keys
-            List<String> redisKeys = records.stream()
-                    .map(item -> ITEM_STOCK_KEY_PREFIX + item.getId())
-                    .collect(Collectors.toList());
-
-            // 3. 【大厂细节】使用 MultiGet 批量获取 Redis 中的库存，极大减少网络 I/O
-            List<String> redisStocks = stringRedisTemplate.opsForValue().multiGet(redisKeys);
-
-            // 用于存放需要修复的 Redis 数据
             Map<String, String> repairMap = new HashMap<>();
+            for (Item item : items) {
+                lastId = item.getId();
+                String stockKey = StockVersionConstants.STOCK_KEY_PREFIX + item.getId();
+                String versionKey = StockVersionConstants.STOCK_VERSION_KEY_PREFIX + item.getId();
 
-            // 4. 开始对账比对
-            for (int i = 0; i < records.size(); i++) {
-                Item mysqlItem = records.get(i);
-                String redisStockStr = redisStocks != null ? redisStocks.get(i) : null;
-                Integer redisStock = redisStockStr != null ? Integer.valueOf(redisStockStr) : null;
+                String redisStockStr = stringRedisTemplate.opsForValue().get(stockKey);
+                String redisVersion = stringRedisTemplate.opsForValue().get(versionKey);
 
-                // 判断是否存在差异 (包含 Redis 中完全没有该商品库存的情况)
-                if (redisStock == null || !mysqlItem.getStock().equals(redisStock)) {
+                Integer redisStock = redisStockStr == null ? null : Integer.valueOf(redisStockStr);
+                if (redisStock == null || !item.getStock().equals(redisStock)) {
                     diffCount++;
-                    String logMsg = String.format("发现库存差异！商品ID: %d, MySQL真实库存: %d, Redis虚假库存: %s",
-                            mysqlItem.getId(), mysqlItem.getStock(), redisStockStr == null ? "NULL" : redisStockStr);
-
-                    log.warn(logMsg);
-                    XxlJobHelper.log(logMsg); // 同步输出到 XXL-Job 调度中心日志
-
-                    // 加入待修复集合
-                    repairMap.put(ITEM_STOCK_KEY_PREFIX + mysqlItem.getId(), String.valueOf(mysqlItem.getStock()));
+                    XxlJobHelper.log("库存差异，itemId={}, mysql={}, redis={}, redisVer={}",
+                            item.getId(), item.getStock(), redisStockStr, redisVersion);
+                    repairMap.put(stockKey, String.valueOf(item.getStock()));
+                    // 对账修复时，版本统一归零，后续业务变更再按 Lua 脚本递增
+                    repairMap.put(versionKey, "0|0");
                 }
             }
 
-            // 5. 【大厂细节】如果发现差异，使用 MultiSet 批量覆写修复 Redis
             if (!repairMap.isEmpty()) {
                 stringRedisTemplate.opsForValue().multiSet(repairMap);
-                log.info("已完成本批次 {} 个商品的 Redis 库存强行覆盖修复", repairMap.size());
+                XxlJobHelper.log("本批次已修复 Redis 库存 {} 项", repairMap.size() / 2);
             }
-
-            // 翻页
-            pageNo++;
         }
 
-        long costTime = System.currentTimeMillis() - startTime;
-        String finishMsg = String.format("库存全量对账任务执行完毕！耗时: %d ms, 累计修复异常商品数: %d 个", costTime, diffCount);
-        log.info(finishMsg);
-        XxlJobHelper.log(finishMsg);
-
-        // 如果差异数量过大，说明白天的 MQ 可能出现了大面积故障，可以在这里触发钉钉/企业微信严重告警
-        if (diffCount > 100) {
-            log.error("【严重警告】昨夜发生的库存差异数量高达 {}，请尽快排查 MQ 或业务日志！", diffCount);
-            // TODO: 调用告警系统 API
-        }
+        XxlJobHelper.log("方案B库存对账任务完成，累计差异商品数={}", diffCount);
     }
 }

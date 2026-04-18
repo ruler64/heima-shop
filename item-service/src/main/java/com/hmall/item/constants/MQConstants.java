@@ -9,6 +9,9 @@ public interface MQConstants {
     String LAZY_ITEM_UPDATE_KEY = "lazy.item.update";
     String LAZY_ITEM_DELETE_KEY = "lazy.item.delete";
 
+    String ITEM_CANAL_CHANGE_EXCHANGE = "canal.exchange";
+    String ITEM_CANAL_CHANGE_QUEUE = "canal.item.sync.queue";
+    String ITEM_CANAL_CHANGE_KEY = "canal.update.item";
 
     /**
      * 商品服务不再提供 RPC 接口供下单实时调用，而是通过监听消息来扣减库存
