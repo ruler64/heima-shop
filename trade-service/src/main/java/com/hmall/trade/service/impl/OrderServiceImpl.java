@@ -85,7 +85,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
-    // 【注入配置类中定义的 Lua 脚本】
     @Qualifier("deductStockAndSaveMsgScript")
     private final DefaultRedisScript<Long> DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT;
 //    static {

@@ -1,5 +1,14 @@
 server:
   port: 8081  # 端口不能重合
+  tomcat: # 做tomcat优化，先提升接入层承载，避免压测时大量请求死在建连阶段
+    threads:
+      max: 100  # 工作线程的最大数量默认是200，改为400,开发环境下 100 足够了，默认 200 都偏多
+      min-spare: 10  # 工作线程的最小数量默认是25，改为50
+    max-connections: 2000 # 服务器在任何给定时间接受和处理的最大连接数。一旦达到限制，操作系统仍然可以根据“acceptCount”属性接受连接
+    accept-count: 1000 # 当所有可能的请求处理线程都在使用时，传入连接请求的最大队列长度。
+    connection-timeout: 2000 # 连接器等待的时间
+    keep-alive-timeout: 20s # 在连接关闭之前等待另一个HTTP请求的时间。如果没有设置，则使用connectionTimeout。当设置为-1时，将没有超时。
+    max-keep-alive-requests: 1000 # 在连接关闭之前可以流水线处理的HTTP请求的最大数量。当设置为0或1时，将禁用keep-alive和pipelining。当设置为-1时，允许无限数量的流水线请求或保持活动请求。
 
 hm:
   db:
@@ -31,9 +40,9 @@ spring:
     publisher-returns: true # 发送者确认机制，方法一
     listener:
       simple:
-        prefetch: 10 #每次处理一条消息（上调以提升吞吐）
-        concurrency: 8
-        max-concurrency: 16
+        prefetch: 20 # 提高单消费者预取，减少频繁向Broker拉取消息的往返开销
+        concurrency: 4 # 监听器调用程序线程的最小数量。初始 4 个,16个太多了
+        max-concurrency: 8 # 监听器调用程序线程的最大数量。最大 8 个，64 个太夸张了
         acknowledge-mode: manual # 消费者确认机制，springAMQP自动处理，若nack则再次投递消息，auto有问题服务器断电会丢失消息
         retry:
           enabled: false # 当前采用手动ACK/NACK与业务幂等，自行控制重试，避免Spring自动接管失败消息
@@ -63,11 +72,20 @@ spring:
         - 192.168.31.128:7005
         - 192.168.31.128:7006
     lettuce:
+      timeout: 3s
+      cluster:
+        refresh:
+          adaptive: true
+          period: 30s
       pool:
-        max-active: 8    # 连接池最大连接数
-        max-wait: -1ms   # 连接池最大阻塞等待时间
-        max-idle: 16      # 连接池中的最大空闲连接
-        min-idle: 0      # 连接池中的最小空闲连接
+        # max-active: 8    # 连接池最大连接数
+        # max-wait: -1ms   # 连接池最大阻塞等待时间
+        # max-idle: 16      # 连接池中的最大空闲连接
+        # min-idle: 0      # 连接池中的最小空闲连接
+        max-active: 16
+        max-wait: 3000ms
+        max-idle: 32
+        min-idle: 16
 xxl:
   job:
     admin:

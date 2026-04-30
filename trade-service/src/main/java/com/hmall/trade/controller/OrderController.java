@@ -1,7 +1,7 @@
 package com.hmall.trade.controller;
 
 import com.hmall.common.utils.BeanUtils;
-
+import org.springframework.validation.annotation.Validated;
 import com.hmall.trade.domain.dto.OrderFormDTO;
 import com.hmall.trade.domain.vo.OrderVO;
 import com.hmall.trade.service.IOrderService;
@@ -13,6 +13,7 @@ import org.apache.ibatis.annotations.Param;
 import org.springframework.web.bind.annotation.*;
 
 @Api(tags = "订单管理接口")
+@Validated
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class OrderController {
 
     @ApiOperation("创建订单")
     @PostMapping
-    public Long createOrder(@RequestBody OrderFormDTO orderFormDTO){
+    public Long createOrder(@RequestBody @Validated OrderFormDTO orderFormDTO){
         return orderService.createOrder(orderFormDTO);
     }
 

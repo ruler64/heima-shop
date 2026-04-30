@@ -36,11 +36,14 @@ public class OrderMQListener {
         return Long.valueOf(String.valueOf(value));
     }
 
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = MQConstants.ASYNC_ORDER_QUEUE, durable = "true"),
-            exchange = @Exchange(name = MQConstants.ASYNC_ORDER_EXCHANGE),
-            key = MQConstants.ASYNC_ORDER_KEY
-    ))
+    @RabbitListener(
+            concurrency = "16-64",
+            bindings = @QueueBinding(
+                    value = @Queue(name = MQConstants.ASYNC_ORDER_QUEUE, durable = "true"),
+                    exchange = @Exchange(name = MQConstants.ASYNC_ORDER_EXCHANGE),
+                    key = MQConstants.ASYNC_ORDER_KEY
+            )
+    )
     public void listenAsyncOrder(Map<String, Object> msg, Channel channel, Message message) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();//MQ消息的递送标签,message是壳子并不是实际数据
         Long orderId = null;
@@ -60,12 +63,16 @@ public class OrderMQListener {
             orderId = toLong(msg.get("orderId"));
             Long userId = toLong(msg.get("userId"));
             OrderFormDTO orderFormDTO = JSON.parseObject(JSON.toJSONString(msg.get("orderForm")), OrderFormDTO.class);
-            log.info("开始消费异步下单消息，orderId={}, userId={}", orderId, userId);
+            if (log.isDebugEnabled()) {
+                log.debug("开始消费异步下单消息，orderId={}, userId={}", orderId, userId);
+            }
             UserContext.setUser(userId);
             // 直接调用落库，防重交给 DB 的唯一索引
             orderService.handleDbOrder(orderId, userId, orderFormDTO);
             channel.basicAck(deliveryTag, false);
-            log.info("异步下单消息消费成功并ACK，orderId={}", orderId);
+            if (log.isDebugEnabled()) {
+                log.debug("异步下单消息消费成功并ACK，orderId={}", orderId);
+            }
         } catch (DuplicateKeyException e) {
             // 如果报主键冲突，说明已经被成功消费过了，直接放行
             log.warn("订单 {} 已存在，判定为重复消费兜底成功，直接 ACK。", orderId);
