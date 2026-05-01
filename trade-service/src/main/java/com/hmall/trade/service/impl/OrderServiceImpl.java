@@ -81,7 +81,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private String buildOutboxKey(Long orderId) {
         long bucket = Math.floorMod(orderId, OUTBOX_BUCKETS);
-        return OUTBOX_KEY_PREFIX + bucket;
+        return OUTBOX_KEY_PREFIX + "{"+bucket+"}";
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
@@ -132,7 +132,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         // 2. 准备 Lua 脚本需要的 KEYS 和 ARGV
         List<String> keys = new ArrayList<>();
-        Object[] args = new Object[orderFormDTO.getDetails().size() + 2]; // 多加 2 个位置放 orderId 和 payload
+        Object[] args = new Object[orderFormDTO.getDetails().size() + 2];
 
         int i = 0;
         for (; i < orderFormDTO.getDetails().size(); i++) {
@@ -143,8 +143,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
         String outboxKey = buildOutboxKey(orderId);
         // 这里仍然沿用 outbox 存储消息，确保 MQ 双写一致性。
-        // 【修复点】：必须把 outboxKey 传给 KEYS，把 orderId 和 msgJson 传给 ARGV
+        // Lua 脚本只依赖库存 key + outbox key；epoch/seq/version 由 Lua 自己在 Redis 中生成。
         keys.add(outboxKey);
+        keys.add("item:stock:epoch:{stock}");
+        keys.add("item:stock:seq:{stock}");
         args[i] = String.valueOf(orderId);
         args[i + 1] = msgJson;
         // 3. 执行 Lua 脚本，原子性扣减库存 + 保存消息！
@@ -156,19 +158,39 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BizIllegalException("部分商品库存不足，下单失败！");
         }
 
+        String enrichedMsgJson = (String) stringRedisTemplate.opsForHash().get(outboxKey, String.valueOf(orderId));
+        if (enrichedMsgJson == null) {
+            throw new IllegalStateException("Redis 预扣减成功但 outbox 消息缺失，orderId=" + orderId);
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> enrichedMsg = JSON.parseObject(enrichedMsgJson, Map.class);
+
+        LocalEventOutbox outbox = new LocalEventOutbox();
+        outbox.setOrderId(orderId);
+        outbox.setEventType("ASYNC_ORDER_CREATE");
+        outbox.setPayload(enrichedMsgJson);
+        outbox.setEpoch(Long.valueOf(String.valueOf(enrichedMsg.get("epoch"))));
+        outbox.setSeq(Long.valueOf(String.valueOf(enrichedMsg.get("seq"))));
+        outbox.setVersion(String.valueOf(enrichedMsg.get("version")));
+        outbox.setSource("REDIS");
+        outbox.setStatus(0);
+        outbox.setRetryCount(0);
+        localEventOutboxMapper.insert(outbox);
+
         // 4. 尝试直接发送 MQ (Happy Path 提高实时性)
         try {
             rabbitMqHelper.sendMessageWithConfirm(MQConstants.ASYNC_ORDER_EXCHANGE,
                     MQConstants.ASYNC_ORDER_KEY,
-                    msg, MQConstants.MAX_RETRY_TIMES);
+                    enrichedMsg, MQConstants.MAX_RETRY_TIMES);
 
-            // 5. 【发送成功】立刻从 Redis 消息表中删掉它，代表消费完成
+            // 5. 【发送成功】立刻从 Redis / MySQL 消息表中删掉它，代表消费完成
             stringRedisTemplate.opsForHash().delete(outboxKey, String.valueOf(orderId));
-            log.info("订单已实时发往 MQ，并清理 Redis 暂存表，订单号: {}", orderId);
+            localEventOutboxMapper.deleteByOrderIdAndEventType(orderId, "ASYNC_ORDER_CREATE");
+            log.info("订单已实时发往 MQ，并清理 Redis 暂存表和 MySQL outbox，订单号: {}", orderId);
 
         } catch (Exception e) {
             // 如果这里发 MQ 抛异常，或者 JVM 在第 4 步之前宕机，
-            // 我们根本不慌，因为消息已经安全地躺在 Redis 的 trade:local_msg_outbox 里了！
+            // 我们根本不慌，因为消息已经安全地躺在 Redis 的 trade:local_msg_outbox 和 MySQL outbox 里了！
             log.warn("发送 MQ 失败，转入后台定时任务补偿重试，订单号: {}", orderId, e);
         }
         return orderId;
@@ -177,7 +199,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     // 【大厂细节 1：剔除 Seata】摒弃沉重的分布式事务，改用普通的本地事务。跨服务的一致性交由 MQ 重试来保障。
     @Transactional(rollbackFor = Exception.class)
-    public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO) {
+    public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO, Long epoch, Long seq, String version) {
         log.info("开始异步落库，orderId={}, userId={}", orderId, userId);
 
         // 【大厂细节 2：前置幂等性防御】
@@ -233,13 +255,22 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         eventPayload.put("userId", userId);
         eventPayload.put("details", detailDTOS);
         eventPayload.put("itemIds", itemIds);
+        eventPayload.put("epoch", epoch);
+        eventPayload.put("seq", seq);
+        eventPayload.put("version", version);
 
         LocalEventOutbox outbox = new LocalEventOutbox();
+        outbox.setOrderId(orderId);
         outbox.setEventType("ORDER_CREATED");
         outbox.setPayload(JSON.toJSONString(eventPayload));
+        outbox.setEpoch(epoch);
+        outbox.setSeq(seq);
+        outbox.setVersion(version);
+        outbox.setSource("MYSQL");
         outbox.setStatus(0); // 待发送
+        outbox.setRetryCount(0);
         localEventOutboxMapper.insert(outbox); // 【核心】和保存订单在同一个事务里！
-        log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}", orderId, outbox.getId());
+        log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}, version={}", orderId, outbox.getId(), outbox.getVersion());
 
         // 5. 使用 afterCommit 作为“实时发送”的优化手段（尽最大努力）
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -272,6 +303,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     log.info("订单 {} 事务提交成功，已发出15分钟延迟关单检测消息", orderId);
                     // 发送成功，把 outbox 状态改为 1 (异步去改即可)
                     localEventOutboxMapper.updateStatus(outbox.getId(), 1);
+                    
                 } catch (Exception e) {
                     // 如果这里发 MQ 失败或者宕机了，完全不用慌！
                     // 因为 outbox 表里状态还是 0。

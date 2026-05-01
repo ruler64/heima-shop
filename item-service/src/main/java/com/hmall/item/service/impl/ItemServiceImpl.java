@@ -60,9 +60,18 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     // 注入流水表 Mapper
     private final StockDeductLogMapper stockDeductLogMapper;
 
+    private static final String STOCK_VERSION_KEY_PREFIX = ItemCachePreloader.ITEM_STOCK_VERSION_KEY_PREFIX;
+
+    private String stockKey(Long itemId) {
+        return ItemCachePreloader.ITEM_STOCK_KEY_PREFIX + itemId;
+    }
+
+    private String stockVersionKey(Long itemId) {
+        return STOCK_VERSION_KEY_PREFIX + itemId;
+    }
 
     // 1. 定义 Lua 脚本
-    private static final DefaultRedisScript<Long> BATCH_INCR_SCRIPT;
+    /*private static final DefaultRedisScript<Long> BATCH_INCR_SCRIPT;
     static {
         BATCH_INCR_SCRIPT = new DefaultRedisScript<>();
         // Lua 脚本：遍历 KEYS 和 ARGV，原子批量增加
@@ -74,16 +83,21 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
                         "return 1"
         );
         BATCH_INCR_SCRIPT.setResultType(Long.class);
-    }
+    }*/
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deductStock(Long orderId, List<OrderDetailDTO> items) {
+    public void deductStock(Long orderId, List<OrderDetailDTO> items, Long epoch, Long seq, String version) {
 
-        // 1. 第一道防线：尝试插入扣减流水，利用数据库唯一索引实现强幂等
+        // 1. 第一道防线：尝试插入扣减流水，利用数据库唯一索引实现强幂等。
+        // 版本号来自 Redis Lua 预扣减阶段，MySQL 只记录事实，不再二次递增 Redis seq/epoch。
         StockDeductLog deductLog = new StockDeductLog();
         deductLog.setOrderId(orderId);
         deductLog.setStatus(1); // 1表示正常扣减
+        deductLog.setDeductNum(items.stream().mapToInt(OrderDetailDTO::getNum).sum());
+        deductLog.setEpoch(epoch);
+        deductLog.setSeq(seq);
+        deductLog.setVersion(version);
 
         try {
             stockDeductLogMapper.insert(deductLog);

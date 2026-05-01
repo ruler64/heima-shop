@@ -29,6 +29,9 @@ public class ItemCachePreloader implements ApplicationRunner {
     // NOTE: Redis Cluster Lua 脚本多 key 运行要求所有 KEYS 落在同一个 hash slot。
     // 因此这里在 key 里使用统一 hash tag：{stock}。
     public static final String ITEM_STOCK_KEY_PREFIX = "item:stock:{stock}:";
+    public static final String ITEM_STOCK_VERSION_KEY_PREFIX = "item:stock:ver:{stock}:";
+    public static final String ITEM_STOCK_EPOCH_KEY = "item:stock:epoch:{stock}";
+    public static final String ITEM_STOCK_SEQ_KEY = "item:stock:seq:{stock}";
 
     @Override
     public void run(ApplicationArguments args) {
@@ -53,6 +56,9 @@ public class ItemCachePreloader implements ApplicationRunner {
             );
             // 库存 key 专门给 Lua 预扣减使用，避免和详情 JSON 混用
             stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(item.getStock()));
+            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_EPOCH_KEY, "1");
+            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_SEQ_KEY, "0");
+            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_VERSION_KEY_PREFIX + item.getId(), "1|0");
 
             // 写入 ZSet 索引 (Score用更新时间戳，TTL: 30分钟)
             long score = item.getUpdateTime() != null ?

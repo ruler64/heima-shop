@@ -22,11 +22,6 @@ local restoreNum = tonumber(ARGV[2])
 local newEpoch = tonumber(ARGV[3])
 local newSeq = tonumber(ARGV[4])
 
-if redis.call('setnx', opKey, opId) == 0 then
-    return 0
-end
-redis.call('expire', opKey, 86400)
-
 local verVal = redis.call('get', verKey)
 local oldEpoch = -1
 local oldSeq = -1
@@ -41,6 +36,12 @@ end
 if newEpoch < oldEpoch or (newEpoch == oldEpoch and newSeq <= oldSeq) then
     return -2
 end
+
+-- 幂等：确认版本可写后，再把 opKey 记入，避免旧消息占坑
+if redis.call('setnx', opKey, opId) == 0 then
+    return 0
+end
+redis.call('expire', opKey, 86400)
 
 redis.call('incrby', stockKey, restoreNum)
 redis.call('set', verKey, tostring(newEpoch) .. '|' .. tostring(newSeq))

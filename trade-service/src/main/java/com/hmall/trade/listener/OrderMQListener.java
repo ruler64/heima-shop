@@ -63,12 +63,15 @@ public class OrderMQListener {
             orderId = toLong(msg.get("orderId"));
             Long userId = toLong(msg.get("userId"));
             OrderFormDTO orderFormDTO = JSON.parseObject(JSON.toJSONString(msg.get("orderForm")), OrderFormDTO.class);
+            Long epoch = toLong(msg.get("epoch"));
+            Long seq = toLong(msg.get("seq"));
+            String version = msg.get("version") == null ? null : String.valueOf(msg.get("version"));
             if (log.isDebugEnabled()) {
-                log.debug("开始消费异步下单消息，orderId={}, userId={}", orderId, userId);
+                log.debug("开始消费异步下单消息，orderId={}, userId={}, version={}", orderId, userId, version);
             }
             UserContext.setUser(userId);
             // 直接调用落库，防重交给 DB 的唯一索引
-            orderService.handleDbOrder(orderId, userId, orderFormDTO);
+            orderService.handleDbOrder(orderId, userId, orderFormDTO, epoch, seq, version);
             channel.basicAck(deliveryTag, false);
             if (log.isDebugEnabled()) {
                 log.debug("异步下单消息消费成功并ACK，orderId={}", orderId);

@@ -50,8 +50,12 @@ public class ItemOrderDeductListener {
                     })
                     .collect(java.util.stream.Collectors.toList());
 
-            // 1. 执行数据库扣减
-            itemService.deductStock(orderId, details);
+            Long epoch = msg.get("epoch") == null ? null : Long.valueOf(String.valueOf(msg.get("epoch")));
+            Long seq = msg.get("seq") == null ? null : Long.valueOf(String.valueOf(msg.get("seq")));
+            String version = msg.get("version") == null ? null : String.valueOf(msg.get("version"));
+
+            // 1. 执行数据库扣减，并沿用 Redis 预扣减链路生成的 epoch/seq/version 记录流水
+            itemService.deductStock(orderId, details, epoch, seq, version);
 
             // 2. 扣减成功，手动 ACK 确认消费完成
             channel.basicAck(deliveryTag, false);

@@ -17,7 +17,7 @@ public class RedisConfig {
         redisScript.setResultType(Long.class);
         return redisScript;
     }
-    @Bean("stock_restore_with_version.lua")
+    @Bean("stock_restore_with_version")
     public DefaultRedisScript<Long> stockRestoreWithVersion() {
         DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
         // 确保你的 src/main/resources/lua/batch_deduct_stock.lua文件存在

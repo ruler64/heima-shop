@@ -53,6 +53,8 @@ public class MqCompensationXxlJob {
 
                 try {
                     Map<String, Object> msg = JSON.parseObject(msgJson, Map.class);
+                    Object version = msg.get("version");
+                    Object epoch = msg.get("epoch");
 
                     rabbitMqHelper.sendMessageWithConfirm(
                             MQConstants.ASYNC_ORDER_EXCHANGE,
@@ -62,7 +64,7 @@ public class MqCompensationXxlJob {
                     );
 
                     stringRedisTemplate.opsForHash().delete(outboxKey, orderIdStr);
-                    XxlJobHelper.log("订单 {} 补偿投递 MQ 成功", orderIdStr);
+                    XxlJobHelper.log("订单 {} 补偿投递 MQ 成功，version={}, epoch={}", orderIdStr, version, epoch);
                     successCount++;
 
                 } catch (Exception e) {
