@@ -19,7 +19,7 @@ import java.util.List;
 public interface IOrderService extends IService<Order> {
     Long createOrder(OrderFormDTO orderFormDTO);//Long createOrder
 
-    void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO, Long epoch, Long seq, String version);//Long createOrder
+    void handleDbOrder(Long orderId,Long userId,OrderFormDTO orderFormDTO);//Long createOrder
 
     void markOrderPaySuccess(Long orderId);
 

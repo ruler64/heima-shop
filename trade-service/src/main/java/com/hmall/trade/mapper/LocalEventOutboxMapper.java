@@ -18,13 +18,8 @@ public interface LocalEventOutboxMapper extends BaseMapper<LocalEventOutbox> {
 
     /**
      * 按业务主键和事件类型删除已成功投递的本地消息。
+     * 不再依赖 payload 全量匹配，避免 JSON 字段顺序或 Redis 追加版本元数据后无法清理。
      */
     @Delete("DELETE FROM local_event_outbox WHERE order_id = #{orderId} AND event_type = #{eventType}")
     int deleteByOrderIdAndEventType(@Param("orderId") Long orderId, @Param("eventType") String eventType);
-
-    /**
-     * 保留旧方法，兼容历史调用。
-     */
-    @Delete("DELETE FROM local_event_outbox WHERE order_id = #{orderId} AND payload = #{payload}")
-    int deleteByOrderIdAndPayload(@Param("orderId") Long orderId, @Param("payload") String payload);
 }

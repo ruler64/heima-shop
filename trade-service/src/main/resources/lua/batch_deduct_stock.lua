@@ -9,6 +9,11 @@ local seq_key = KEYS[item_count + 3]
 local order_id = ARGV[item_count + 1]
 local payload = ARGV[item_count + 2]
 
+-- 0. 订单维度幂等：重复 orderId 直接放行，避免重复预扣 Redis 库存
+if redis.call('HEXISTS', outbox_key, order_id) == 1 then
+    return 0
+end
+
 local epoch = redis.call('GET', epoch_key)
 if not epoch then
     epoch = 1
@@ -24,18 +29,15 @@ for i = 1, item_count do
     end
 end
 
--- 2. 先生成一次订单级版本号。seq 只在 Lua 成功路径递增，代表 Redis 预扣减事实顺序。
-local seq = redis.call('INCR', seq_key)
-local version = tostring(epoch) .. '|' .. tostring(seq)
-
--- 3. 批量扣减库存，并给每个商品写入本次预扣减后的版本标记
+-- 2. 批量扣减库存
 for i = 1, item_count do
     local demand = tonumber(ARGV[i])
     redis.call('DECRBY', KEYS[i], demand)
-    redis.call('SET', string.gsub(KEYS[i], 'item:stock:{stock}:', 'item:stock:ver:{stock}:'), version)
 end
 
--- 4. 生成增强消息并写入 Redis outbox。Java 层后续会读取这个增强后的 payload 写 MySQL outbox / 发 MQ。
+-- 3. 生成版本号并写入 outbox payload
+local seq = redis.call('INCR', seq_key)
+local version = tostring(epoch) .. '|' .. tostring(seq)
 local enriched_payload = cjson.decode(payload)
 enriched_payload['epoch'] = tonumber(epoch)
 enriched_payload['seq'] = tonumber(seq)
@@ -43,5 +45,5 @@ enriched_payload['version'] = version
 enriched_payload['source'] = 'REDIS'
 redis.call('HSET', outbox_key, order_id, cjson.encode(enriched_payload))
 
--- 5. 成功返回 0 表示全部扣减成功且消息落库成功
+-- 4. 成功返回 0 表示全部扣减成功且消息落库成功
 return 0

@@ -19,11 +19,7 @@ import java.util.List;
  */
 public interface IItemService extends IService<Item> {
 
-    void deductStock(Long orderId, List<OrderDetailDTO> items, Long epoch, Long seq, String version);
-
-    default void deductStock(Long orderId, List<OrderDetailDTO> items) {
-        deductStock(orderId, items, null, null, null);
-    }
+    void deductStock(Long orderId, List<OrderDetailDTO> items);
 
     PageDTO<ItemDTO> queryItemByPageWithCache(PageQuery query);
 

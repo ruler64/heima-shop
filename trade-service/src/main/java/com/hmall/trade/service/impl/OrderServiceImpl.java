@@ -78,10 +78,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private static final int OUTBOX_BUCKETS = 16;
     private static final String OUTBOX_KEY_PREFIX = "trade:local_msg_outbox:{stock}:";
+    private static final String ORDER_CREATED_EVENT = "ORDER_CREATED";
 
     private String buildOutboxKey(Long orderId) {
         long bucket = Math.floorMod(orderId, OUTBOX_BUCKETS);
-        return OUTBOX_KEY_PREFIX + "{"+bucket+"}";
+        return OUTBOX_KEY_PREFIX + bucket;
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
@@ -158,21 +159,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BizIllegalException("部分商品库存不足，下单失败！");
         }
 
-        String enrichedMsgJson = (String) stringRedisTemplate.opsForHash().get(outboxKey, String.valueOf(orderId));
-        if (enrichedMsgJson == null) {
-            throw new IllegalStateException("Redis 预扣减成功但 outbox 消息缺失，orderId=" + orderId);
-        }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> enrichedMsg = JSON.parseObject(enrichedMsgJson, Map.class);
-
         LocalEventOutbox outbox = new LocalEventOutbox();
         outbox.setOrderId(orderId);
-        outbox.setEventType("ASYNC_ORDER_CREATE");
-        outbox.setPayload(enrichedMsgJson);
-        outbox.setEpoch(Long.valueOf(String.valueOf(enrichedMsg.get("epoch"))));
-        outbox.setSeq(Long.valueOf(String.valueOf(enrichedMsg.get("seq"))));
-        outbox.setVersion(String.valueOf(enrichedMsg.get("version")));
-        outbox.setSource("REDIS");
+        outbox.setEventType(ORDER_CREATED_EVENT);
+        outbox.setPayload(msgJson);
+        // MySQL outbox 只负责“消息是否可靠投递”的事实，不承接 Redis 库存版本事实。
+        // 库存 epoch/seq 由 Redis 预扣链路和 item 库存流水分别独立维护，用于后续对账判断。
+        outbox.setSource("MYSQL");
         outbox.setStatus(0);
         outbox.setRetryCount(0);
         localEventOutboxMapper.insert(outbox);
@@ -181,11 +174,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         try {
             rabbitMqHelper.sendMessageWithConfirm(MQConstants.ASYNC_ORDER_EXCHANGE,
                     MQConstants.ASYNC_ORDER_KEY,
-                    enrichedMsg, MQConstants.MAX_RETRY_TIMES);
+                    msg, MQConstants.MAX_RETRY_TIMES);
 
             // 5. 【发送成功】立刻从 Redis / MySQL 消息表中删掉它，代表消费完成
             stringRedisTemplate.opsForHash().delete(outboxKey, String.valueOf(orderId));
-            localEventOutboxMapper.deleteByOrderIdAndEventType(orderId, "ASYNC_ORDER_CREATE");
+            localEventOutboxMapper.deleteByOrderIdAndEventType(orderId, ORDER_CREATED_EVENT);
             log.info("订单已实时发往 MQ，并清理 Redis 暂存表和 MySQL outbox，订单号: {}", orderId);
 
         } catch (Exception e) {
@@ -199,7 +192,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     // 【大厂细节 1：剔除 Seata】摒弃沉重的分布式事务，改用普通的本地事务。跨服务的一致性交由 MQ 重试来保障。
     @Transactional(rollbackFor = Exception.class)
-    public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO, Long epoch, Long seq, String version) {
+    public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO) {
         log.info("开始异步落库，orderId={}, userId={}", orderId, userId);
 
         // 【大厂细节 2：前置幂等性防御】
@@ -250,27 +243,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // ================== 【大厂绝杀重构】 ==================
         // 3. 彻底删除 itemClient 和 cartClient 的调用！
         // 4. 将需要通知下游的消息，组装成 JSON，写入本地消息表
-        Map<String, Object> eventPayload = new HashMap<>();
-        eventPayload.put("orderId", orderId);
-        eventPayload.put("userId", userId);
-        eventPayload.put("details", detailDTOS);
-        eventPayload.put("itemIds", itemIds);
-        eventPayload.put("epoch", epoch);
-        eventPayload.put("seq", seq);
-        eventPayload.put("version", version);
+        Map<String, Object> eventPayload = buildOrderCreatedEventPayload(orderId, userId, detailDTOS, itemIds);
 
         LocalEventOutbox outbox = new LocalEventOutbox();
         outbox.setOrderId(orderId);
-        outbox.setEventType("ORDER_CREATED");
+        outbox.setEventType(ORDER_CREATED_EVENT);
         outbox.setPayload(JSON.toJSONString(eventPayload));
-        outbox.setEpoch(epoch);
-        outbox.setSeq(seq);
-        outbox.setVersion(version);
         outbox.setSource("MYSQL");
         outbox.setStatus(0); // 待发送
         outbox.setRetryCount(0);
         localEventOutboxMapper.insert(outbox); // 【核心】和保存订单在同一个事务里！
-        log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}, version={}", orderId, outbox.getId(), outbox.getVersion());
+        log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}", orderId, outbox.getId());
 
         // 5. 使用 afterCommit 作为“实时发送”的优化手段（尽最大努力）
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -536,6 +519,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 //            localEventOutboxMapper.insert(outbox);
             log.info("订单 {} 取消成功，已通知Item 数据库，退库任务(increase)已落库", orderId);
         }
+    }
+
+    private Map<String, Object> buildOrderCreatedEventPayload(Long orderId, Long userId,
+                                                               List<OrderDetailDTO> detailDTOS,
+                                                               Set<Long> itemIds) {
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("orderId", orderId);
+        eventPayload.put("userId", userId);
+        eventPayload.put("details", detailDTOS == null ? Collections.emptyList() : detailDTOS);
+        eventPayload.put("itemIds", itemIds == null ? Collections.emptyList() : new ArrayList<>(itemIds));
+        return eventPayload;
     }
 
     private List<OrderDetail> buildDetails(Long orderId, List<ItemDTO> items, Map<Long, Integer> numMap) {

@@ -53,7 +53,7 @@ public class ItemRestoreJobHandler {
                 event.setUpdateTime(LocalDateTime.now());
                 outboxMapper.updateById(event);
 
-                log.info("定时任务成功发送库存恢复 MQ 消息，订单号: {}，version={}", JSON.parseObject(event.getPayload()).getString("orderId"), event.getVersion());
+                log.info("定时任务成功发送库存恢复 MQ 消息，订单号: {}", JSON.parseObject(event.getPayload()).getString("orderId"));
 
             } catch (Exception e) {
                 // 【精髓所在】如果 RabbitMQ 连不上，或者发消息超时，这里会报错。

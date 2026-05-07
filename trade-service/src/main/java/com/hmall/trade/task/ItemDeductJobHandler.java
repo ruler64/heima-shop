@@ -47,8 +47,7 @@ public class ItemDeductJobHandler {
                 // 否则 RabbitTemplate 会把它当“普通 String”再包一层，消费者拿到的就是双重编码字符串。
                 Map<String, Object> payload = com.alibaba.fastjson.JSON.parseObject(event.getPayload(), java.util.Map.class);
                 long orderId = (Long)payload.get("orderId");
-                Object version = payload.get("version");
-                Object epoch = payload.get("epoch");
+
                 rabbitMqHelper.sendMessageWithConfirm(
                         MQConstants.ORDER_EVENT_EXCHANGE,
                         MQConstants.ORDER_ITEM_DEDUCT_KEY,
@@ -71,7 +70,7 @@ public class ItemDeductJobHandler {
                             return message;
                         }
                 );
-                log.info("订单 {} 事务提交成功，已发出15分钟延迟关单检测消息，version={}, epoch={}", orderId, version, epoch);
+                log.info("订单 {} 事务提交成功，已发出15分钟延迟关单检测消息", orderId);
                 // 3. 投递成功，更新状态为 1 (已发送)
                 event.setStatus(1);
                 event.setUpdateTime(LocalDateTime.now());

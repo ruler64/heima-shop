@@ -24,6 +24,7 @@ import com.hmall.item.domain.po.StockDeductLog;
 import com.hmall.item.mapper.ItemMapper;
 import com.hmall.item.mapper.StockDeductLogMapper;
 import com.hmall.item.service.IItemService;
+import com.hmall.item.service.IItemStockVersionService;
 import com.hmall.item.task.BloomFilterJobHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     private final RedissonClient redissonClient;
     // 注入流水表 Mapper
     private final StockDeductLogMapper stockDeductLogMapper;
+    private final IItemStockVersionService itemStockVersionService;
 
     private static final String STOCK_VERSION_KEY_PREFIX = ItemCachePreloader.ITEM_STOCK_VERSION_KEY_PREFIX;
 
@@ -87,17 +89,13 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deductStock(Long orderId, List<OrderDetailDTO> items, Long epoch, Long seq, String version) {
+    public void deductStock(Long orderId, List<OrderDetailDTO> items) {
 
         // 1. 第一道防线：尝试插入扣减流水，利用数据库唯一索引实现强幂等。
-        // 版本号来自 Redis Lua 预扣减阶段，MySQL 只记录事实，不再二次递增 Redis seq/epoch。
+        // StockDeductLog 只承担幂等状态机职责，不再承载 Redis/MySQL 的版本事实。
         StockDeductLog deductLog = new StockDeductLog();
         deductLog.setOrderId(orderId);
         deductLog.setStatus(1); // 1表示正常扣减
-        deductLog.setDeductNum(items.stream().mapToInt(OrderDetailDTO::getNum).sum());
-        deductLog.setEpoch(epoch);
-        deductLog.setSeq(seq);
-        deductLog.setVersion(version);
 
         try {
             stockDeductLogMapper.insert(deductLog);
@@ -138,7 +136,11 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
             throw new BizIllegalException("部分商品库存不足，扣减失败！");
         }
 
-        log.info("订单 {} 库存批量扣减成功，并记录流水完毕", orderId);
+        for (OrderDetailDTO item : items) {
+            itemStockVersionService.recordStockChange(item.getItemId(), orderId, "DEDUCT");
+        }
+
+        log.info("订单 {} 库存批量扣减成功，并记录幂等流水完毕", orderId);
     }
     /**
      * 核心高并发分页查询：数据与索引分离 + DCL双重检查锁
@@ -597,6 +599,9 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         if (affectedIncreaseRows != orderDetailDTOS.size()) {
             log.error("订单 {} 批量恢复库存异常，请检查商品库是否完整！", orderId);
             throw new RuntimeException("批量恢复数据库库存异常");
+        }
+        for (OrderDetailDTO item : orderDetailDTOS) {
+            itemStockVersionService.recordStockChange(item.getItemId(), orderId, "RESTORE");
         }
         // 3. 【新增逻辑】安全恢复 Redis 缓存库存
         // 为什么用 afterCommit？

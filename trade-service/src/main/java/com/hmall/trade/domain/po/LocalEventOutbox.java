@@ -30,20 +30,20 @@ public class LocalEventOutbox {
      */
     private String payload;
 
-    /**
-     * Redis 故障世代号
-     */
-    private Long epoch;
-
-    /**
-     * 当前世代内单调递增序号
-     */
-    private Long seq;
-
-    /**
-     * 逻辑版本号，建议格式：epoch|seq
-     */
-    private String version;
+//    /**
+//     * Redis 故障世代号
+//     */
+//    private Long epoch;
+//
+//    /**
+//     * 当前世代内单调递增序号
+//     */
+//    private Long seq;
+//
+//    /**
+//     * 逻辑版本号，建议格式：epoch|seq
+//     */
+//    private String version;
 
     /**
      * 消息来源：REDIS / MYSQL

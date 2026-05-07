@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -34,15 +35,19 @@ public class CartOrderListener {
     public void listenOrderCreated(Map<String, Object> msg,
                                    Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
-        Long userId = msg.get("userId") == null ? null : Long.valueOf(String.valueOf(msg.get("userId")));
-        @SuppressWarnings("unchecked")
-        List<Object> rawItemIds = (List<Object>) msg.get("itemIds");
-        List<Long> itemIds = rawItemIds.stream()
-                .map(itemId -> Long.valueOf(String.valueOf(itemId)))
-                .collect(Collectors.toList());
-
-        UserContext.setUser(userId);
         try {
+            if (msg == null) {
+                throw new IllegalArgumentException("订单消息为空");
+            }
+
+            Long userId = msg.get("userId") == null ? null : Long.valueOf(String.valueOf(msg.get("userId")));
+            List<Long> itemIds = parseItemIds(msg);
+
+            if (itemIds.isEmpty()) {
+                throw new IllegalArgumentException("订单消息中的 itemIds 为空");
+            }
+
+            UserContext.setUser(userId);
             cartService.removeByItemIds(itemIds);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
@@ -51,5 +56,41 @@ public class CartOrderListener {
         } finally {
             UserContext.removeUser();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Long> parseItemIds(Map<String, Object> msg) {
+        Object itemIdsObj = msg.get("itemIds");
+        if (itemIdsObj instanceof List && !((List<?>) itemIdsObj).isEmpty()) {
+            return ((List<?>) itemIdsObj).stream()
+                    .filter(Objects::nonNull)
+                    .map(itemId -> Long.valueOf(String.valueOf(itemId)))
+                    .collect(Collectors.toList());
+        }
+
+        Object detailsObj = msg.get("details");
+        if (detailsObj == null) {
+            Object orderFormObj = msg.get("orderForm");
+            if (orderFormObj instanceof Map) {
+                detailsObj = ((Map<String, Object>) orderFormObj).get("details");
+            }
+        }
+        if (!(detailsObj instanceof List) || ((List<?>) detailsObj).isEmpty()) {
+            throw new IllegalArgumentException("订单消息缺少 itemIds/details，msgKeys=" + msg.keySet());
+        }
+
+        return ((List<?>) detailsObj).stream()
+                .filter(Objects::nonNull)
+                .map(detail -> {
+                    if (detail instanceof Map) {
+                        Object itemId = ((Map<String, Object>) detail).get("itemId");
+                        if (itemId == null) {
+                            throw new IllegalArgumentException("订单明细缺少 itemId，detail=" + detail);
+                        }
+                        return Long.valueOf(String.valueOf(itemId));
+                    }
+                    throw new IllegalArgumentException("订单明细格式非法，detail=" + detail);
+                })
+                .collect(Collectors.toList());
     }
 }

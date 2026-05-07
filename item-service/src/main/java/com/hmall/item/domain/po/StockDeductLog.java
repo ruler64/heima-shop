@@ -8,7 +8,10 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 库存扣减流水表 (用于实现分布式幂等与对账)
+ * 库存扣减幂等流水表。
+ * <p>
+ * 当前只承担“订单是否已扣减/是否已回滚”的幂等状态机职责，
+ * 不再承载 MySQL 或 Redis 的版本事实。
  */
 @Data
 @TableName("stock_deduct_log")
@@ -19,22 +22,7 @@ public class StockDeductLog {
     /** 业务订单号 (数据库中必须建 UNIQUE 唯一索引) */
     private Long orderId;
 
-    /** 商品 ID，便于单品维度对账 */
-    //private Long itemId;
-
-    /** 扣减数量 */
-    private Integer deductNum;
-
-    /** Redis 故障世代号 */
-    private Long epoch;
-
-    /** 当前世代内单调递增序号 */
-    private Long seq;
-
-    /** 逻辑版本号，建议格式：epoch|seq */
-    private String version;
-
-    /** 流水状态：1-已扣减，2-已回滚(为将来延迟关单退库存留后路) */
+    /** 流水状态：1-已扣减，2-已回滚(为延迟关单退库存提供幂等兜底) */
     private Integer status;
 
     private LocalDateTime createTime;

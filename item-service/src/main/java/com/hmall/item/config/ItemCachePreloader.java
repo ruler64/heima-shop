@@ -32,6 +32,7 @@ public class ItemCachePreloader implements ApplicationRunner {
     public static final String ITEM_STOCK_VERSION_KEY_PREFIX = "item:stock:ver:{stock}:";
     public static final String ITEM_STOCK_EPOCH_KEY = "item:stock:epoch:{stock}";
     public static final String ITEM_STOCK_SEQ_KEY = "item:stock:seq:{stock}";
+    public static final String ITEM_MYSQL_STOCK_SEQ_KEY = "item:stock:mysql:seq:{stock}";
 
     @Override
     public void run(ApplicationArguments args) {
@@ -58,6 +59,7 @@ public class ItemCachePreloader implements ApplicationRunner {
             stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(item.getStock()));
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_EPOCH_KEY, "1");
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_SEQ_KEY, "0");
+            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_MYSQL_STOCK_SEQ_KEY, "0");
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_VERSION_KEY_PREFIX + item.getId(), "1|0");
 
             // 写入 ZSet 索引 (Score用更新时间戳，TTL: 30分钟)
