@@ -1261,3 +1261,319 @@ Caused by: java.lang.NullPointerException: Cannot invoke "java.util.List.stream(
 09:52:29:131 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
 09:52:29:132 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
 09:52:29:136 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:115 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:115 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:115 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:115 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:126 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:126 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:126 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:126 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:130 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:130 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:130 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:130 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:275 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:276 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:277 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:580 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:580 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:582 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:21:857 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:21:857 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:21:859 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:22:157 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:22:158 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:22:159 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:22:476 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:22:476 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:22:478 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:22:757 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:22:757 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:22:760 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:23:062 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:23:063 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:23:065 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:23:367 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:23:367 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:23:368 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:23:675 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:23:675 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:23:677 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:23:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:23:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:23:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:24:259 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:24:259 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:24:261 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:24:561 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:24:561 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:24:563 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:24:841 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:24:841 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:24:841 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:25:163 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:25:163 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:25:164 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:25:459 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:25:460 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:25:461 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:25:753 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:25:753 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:25:755 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:26:086 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:26:086 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:26:088 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:26:490 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:26:491 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:26:498 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:26:825 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:26:825 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:26:838 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:26:992 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:26:992 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:26:996 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:27:293 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:27:293 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:27:298 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:27:566 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:27:566 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:27:571 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:27:861 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:27:861 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:27:863 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:28:167 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:28:168 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:28:170 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:28:459 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:28:459 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:28:461 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:28:761 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:28:762 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:28:763 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:29:052 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:29:053 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:29:054 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:29:360 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:29:360 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:29:362 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:29:663 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:29:663 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:29:664 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:29:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:29:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:29:951 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:30:259 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:30:260 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:30:262 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:30:554 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:30:555 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:30:556 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:30:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:30:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:30:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:31:153 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:31:153 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:31:155 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:31:455 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:31:456 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:31:458 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:31:761 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:31:762 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:31:764 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:32:056 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:32:056 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:32:058 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:32:358 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:32:358 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:32:359 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:32:657 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:32:658 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:32:660 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:32:958 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:32:958 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:32:959 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:33:258 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:33:259 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:33:261 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:33:628 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:33:629 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:33:630 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:33:858 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:33:858 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:33:861 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:34:157 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:34:158 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:34:159 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:34:462 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:34:463 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:34:464 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:34:758 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:34:758 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:34:760 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:35:074 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:35:075 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:35:077 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:35:356 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:35:356 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:35:357 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:35:655 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:35:656 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:35:656 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:35:937 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:35:937 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:35:937 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:36:257 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:36:257 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:36:259 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:36:569 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:36:569 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:36:574 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:36:862 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:36:862 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:36:864 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:37:161 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:37:162 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:37:164 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:37:460 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:37:460 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:37:462 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:37:784 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:37:784 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:37:788 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:38:059 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:38:059 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:38:061 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:38:373 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:38:374 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:38:375 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:38:654 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:38:655 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:38:657 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:38:967 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:38:967 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:38:969 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:39:256 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:39:256 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:39:257 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:39:560 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:39:560 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:39:562 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:39:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:39:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:39:861 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:40:157 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:40:158 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:40:159 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:40:454 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:40:454 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:40:455 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:40:754 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:40:755 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:40:756 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:41:063 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:41:063 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:41:067 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:41:531 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:41:531 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:41:532 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:41:952 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:41:953 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:41:962 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:42:056 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:42:057 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:42:065 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:42:289 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:42:289 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:42:294 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:42:570 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:42:571 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:42:576 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:42:871 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:42:871 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:42:874 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:43:264 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:43:265 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:43:266 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:43:449 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:43:449 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:43:451 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:43:751 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:43:751 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:43:752 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:44:049 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:44:049 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:44:050 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:44:357 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:44:358 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:44:360 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:44:666 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:44:666 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:44:668 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:44:952 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:44:952 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:44:955 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:45:247 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:45:248 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:45:249 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:45:549 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:45:550 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:45:551 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:45:853 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:45:854 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:45:855 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:46:161 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:46:161 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:46:163 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:46:449 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:46:449 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:46:450 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:46:770 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:46:771 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:46:773 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:47:055 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:47:056 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:47:058 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:47:368 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:47:369 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:47:371 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:47:745 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:47:745 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:47:749 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:47:953 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:47:953 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:47:954 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:48:255 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:48:255 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:48:258 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:48:561 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:48:561 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:48:564 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:48:860 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:48:861 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:48:863 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-1] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:49:155 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:49:156 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:49:157 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-3] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:49:452 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:49:453 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:49:454 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-2] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:24:49:756 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==>  Preparing: DELETE FROM cart WHERE (user_id = ? AND item_id IN (?))
+19:24:49:756 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : ==> Parameters: 1(Long), 317578(Long)
+19:24:49:758 DEBUG 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-4] com.hmall.cart.mapper.CartMapper.delete  : <==    Updates: 0
+19:25:28:871  WARN 110796 --- [Thread-5] c.a.nacos.common.notify.NotifyCenter     : [NotifyCenter] Start destroying Publisher
+19:25:28:873  WARN 110796 --- [Thread-5] c.a.nacos.common.notify.NotifyCenter     : [NotifyCenter] Destruction of the end
+19:25:28:942  WARN 110796 --- [Thread-1] c.a.n.common.http.HttpClientBeanHolder   : [HttpClientBeanHolder] Start destroying common HttpClient
+19:25:28:954  WARN 110796 --- [Thread-1] c.a.n.common.http.HttpClientBeanHolder   : [HttpClientBeanHolder] Destruction of the end
+19:25:29:250  INFO 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-6] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+19:25:30:040  INFO 110796 --- [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#0-6] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+19:25:30:237  INFO 110796 --- [SpringApplicationShutdownHook] c.a.c.n.registry.NacosServiceRegistry    : De-registering from Nacos Server now...
+19:25:30:252  INFO 110796 --- [SpringApplicationShutdownHook] c.a.c.n.registry.NacosServiceRegistry    : De-registration finished.
+19:25:30:583  INFO 110796 --- [SpringApplicationShutdownHook] com.alibaba.nacos.common.remote.client   : Shutdown rpc client, set status to shutdown
+19:25:30:583  INFO 110796 --- [SpringApplicationShutdownHook] com.alibaba.nacos.common.remote.client   : Shutdown client event executor java.util.concurrent.ScheduledThreadPoolExecutor@1bfca933[Running, pool size = 2, active threads = 2, queued tasks = 0, completed tasks = 0]
+19:25:30:583  INFO 110796 --- [SpringApplicationShutdownHook] com.alibaba.nacos.common.remote.client   : Close current connection 1776570856280_192.168.31.1_7861
+19:25:30:589  INFO 110796 --- [nacos-grpc-client-executor-7017] c.a.n.c.remote.client.grpc.GrpcClient    : [1776570856280_192.168.31.1_7861]Ignore complete event,isRunning:false,isAbandon=false
+19:25:30:630  INFO 110796 --- [SpringApplicationShutdownHook] c.a.n.c.remote.client.grpc.GrpcClient    : Shutdown grpc executor java.util.concurrent.ThreadPoolExecutor@5b427604[Running, pool size = 5, active threads = 0, queued tasks = 0, completed tasks = 7018]
+19:25:30:650  INFO 110796 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+19:25:30:661  INFO 110796 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+19:25:30:674  INFO 110796 --- [SpringApplicationShutdownHook] o.s.a.r.l.SimpleMessageListenerContainer : Shutdown ignored - container is already stopped

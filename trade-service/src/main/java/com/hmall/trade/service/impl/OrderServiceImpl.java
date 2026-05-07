@@ -159,7 +159,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BizIllegalException("部分商品库存不足，下单失败！");
         }
 
-        LocalEventOutbox outbox = new LocalEventOutbox();
+        /*LocalEventOutbox outbox = new LocalEventOutbox();
         outbox.setOrderId(orderId);
         outbox.setEventType(ORDER_CREATED_EVENT);
         outbox.setPayload(msgJson);
@@ -168,7 +168,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         outbox.setSource("MYSQL");
         outbox.setStatus(0);
         outbox.setRetryCount(0);
-        localEventOutboxMapper.insert(outbox);
+        localEventOutboxMapper.insert(outbox);*/
 
         // 4. 尝试直接发送 MQ (Happy Path 提高实时性)
         try {
@@ -178,7 +178,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
             // 5. 【发送成功】立刻从 Redis / MySQL 消息表中删掉它，代表消费完成
             stringRedisTemplate.opsForHash().delete(outboxKey, String.valueOf(orderId));
-            localEventOutboxMapper.deleteByOrderIdAndEventType(orderId, ORDER_CREATED_EVENT);
+            //localEventOutboxMapper.deleteByOrderIdAndEventType(orderId, ORDER_CREATED_EVENT);
             log.info("订单已实时发往 MQ，并清理 Redis 暂存表和 MySQL outbox，订单号: {}", orderId);
 
         } catch (Exception e) {
