@@ -1,6 +1,9 @@
 package com.hmall.trade.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hmall.common.utils.BeanUtils;
+import com.hmall.trade.domain.po.LocalEventOutbox;
+import com.hmall.trade.mapper.LocalEventOutboxMapper;
 import org.springframework.validation.annotation.Validated;
 import com.hmall.trade.domain.dto.OrderFormDTO;
 import com.hmall.trade.domain.vo.OrderVO;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class OrderController {
     private final IOrderService orderService;
+    private final LocalEventOutboxMapper localEventOutboxMapper;
 
     @ApiOperation("根据id查询订单")
     @GetMapping("{id}")
@@ -37,5 +41,13 @@ public class OrderController {
     @PutMapping("/{orderId}")
     public void markOrderPaySuccess(@PathVariable("orderId") Long orderId) {
         orderService.markOrderPaySuccess(orderId);
+    }
+
+    @GetMapping("/pending-exists")
+    public Boolean existsPendingOutbox() {
+        Integer count = localEventOutboxMapper.selectCount(new LambdaQueryWrapper<LocalEventOutbox>()
+                .eq(LocalEventOutbox::getStatus, 0)
+                .last("LIMIT 1"));
+        return count != null && count > 0;
     }
 }

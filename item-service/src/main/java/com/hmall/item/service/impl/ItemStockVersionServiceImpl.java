@@ -16,6 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMapper, ItemStockVersion>
         implements IItemStockVersionService {
 
+    /**
+     * 更新mysql流水号
+     * @param itemId 商品ID
+     * @param orderId 订单ID
+     * @param eventType 最近事件类型：DEDUCT/ RESTORE/ RECONCILE
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void recordStockChange(Long itemId, Long orderId, String eventType) {
@@ -32,6 +38,10 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
         }
     }
 
+    /**
+     * 更新mysql该商品的恢复状态
+     * @param itemId 商品ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void recordReconcileRepair(Long itemId) {
@@ -59,6 +69,12 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
         }
     }
 
+    /**
+     * 确保该商品在Item_Stock_Version表中存在
+     * @param itemId 商品ID
+     * @param orderId 订单ID
+     * @param eventType 最近事件类型：DEDUCT/ RESTORE/ RECONCILE
+     */
     private void ensureVersionRowExists(Long itemId, Long orderId, String eventType) {
         ItemStockVersion version = new ItemStockVersion();
         version.setItemId(itemId);
@@ -73,6 +89,10 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
         }
     }
 
+    /**
+     * 确保更新mysql该商品的恢复状态成功
+     * @param itemId 商品ID
+     */
     private void recordReconcileRepairRetry(Long itemId) {
         ItemStockVersion current = getOne(new LambdaQueryWrapper<ItemStockVersion>()
                 .eq(ItemStockVersion::getItemId, itemId)
