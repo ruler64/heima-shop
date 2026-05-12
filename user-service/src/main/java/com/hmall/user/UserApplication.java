@@ -11,7 +11,9 @@ import org.springframework.web.client.RestTemplate;
 //@EnableFeignClients(basePackages = "com.hmall.api.client",defaultConfiguration = DefaultFeignConfig.class)//进行openfeign调试时用
 @EnableFeignClients(basePackages = "com.hmall.api.client")
 @MapperScan("com.hmall.user.mapper")
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+        org.apache.shardingsphere.spring.boot.ShardingSphereAutoConfiguration.class
+})
 public class UserApplication {
     public static void main(String[] args) {
         SpringApplication.run(UserApplication.class, args);

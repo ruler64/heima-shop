@@ -56,7 +56,7 @@ spring:
 #        min-idle: 0      # 连接池中的最小空闲连接
   redis:
     redisson:
-      config: |
+      config:
         # singleServerConfig:
         #   connectionPoolSize: 256    # 调大这个
         #   connectionMinimumIdleSize: 32

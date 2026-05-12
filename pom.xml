@@ -40,6 +40,8 @@
         <hutool.version>5.8.11</hutool.version>
         <mysql.version>8.0.23</mysql.version>
         <elasticsearch.version>7.12.1</elasticsearch.version>
+<!--Spring Boot 2.7.x 自带的 SnakeYAML 版本通常是 1.30，而这个版本里没有 setCodePointLimit 这个方法。ShardingSphere 需要的是 1.33 或更高版本。-->
+        <snakeyaml.version>1.33</snakeyaml.version>
     </properties>
 
     <!-- 对依赖包进行管理 -->
@@ -80,6 +82,7 @@
                 <version>${hutool.version}</version>
             </dependency>
         </dependencies>
+
     </dependencyManagement>
     <dependencies>
         <!-- lombok 管理 -->
@@ -95,6 +98,17 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <!-- 根 pom.xml，和 <dependencies> 同级 -->
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>aliyun</id>
+            <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+    </repositories>
 
     <build>
         <pluginManagement>

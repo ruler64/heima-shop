@@ -36,7 +36,9 @@ public class OrderDelayMessageListener {
     private final PayClient payClient;
     private final RabbitTemplate rabbitTemplate;
 
-    @RabbitListener(bindings = @QueueBinding(
+    @RabbitListener(
+            concurrency = "16-64",
+            bindings = @QueueBinding(
             value = @Queue(name = MQConstants.DELAY_ORDER_QUEUE_NAME),
             exchange = @Exchange(name = MQConstants.DELAY_EXCHANGE_NAME, delayed = "true"),
             //arguments = @Argument(name = "x-queue-mode", value = "lazy"), //声明惰性队列，持久化存储，更好的性能

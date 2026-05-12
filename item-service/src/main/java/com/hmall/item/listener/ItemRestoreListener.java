@@ -29,7 +29,9 @@ public class ItemRestoreListener {
 
     private final IItemService itemService;
 
-    @RabbitListener(bindings = @QueueBinding(
+    @RabbitListener(
+            concurrency = "16-64",
+            bindings = @QueueBinding(
             value = @Queue(name = MQConstants.RESTORE_ITEM_QUEUE, durable = "true"),
             exchange = @Exchange(name = MQConstants.RESTORE_ITEM_EXCHANGE, type = ExchangeTypes.TOPIC),
             key = MQConstants.RESTORE_ITEM_KEY
