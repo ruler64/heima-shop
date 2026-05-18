@@ -26,4 +26,6 @@ public interface IOrderService extends IService<Order> {
     void cancelOrder(Long orderId);
     // 新增：分布式事务逆向回滚专用方法
     void cancelOrderAndRestore(Long orderId, List<OrderDetailDTO> details);
+
+    boolean updateStatusToCancelled(Long orderId);
 }

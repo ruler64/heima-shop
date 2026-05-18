@@ -98,4 +98,17 @@ public class ItemController {
     public void increaseStock(@RequestParam("orderId") Long orderId, @RequestBody List<OrderDetailDTO> items){
         itemService.increaseStock(orderId,items);
     }
+
+    /**
+     * 懒加载单个商品库存到 Redis。
+     *
+     * <p>供 trade-service 在 Lua 扣减时发现库存 key 缺失时调用。
+     * 仅内部服务调用，不对外暴露（可在网关层拦截 /items/stock/load/*）。
+     *
+     * @param itemId 商品 ID
+     */
+    @PostMapping("/stock/load/{itemId}")
+    public void loadStockToRedis(@PathVariable("itemId") Long itemId) {
+        itemService.loadStockToRedis(itemId);
+    }
 }

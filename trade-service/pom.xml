@@ -88,6 +88,18 @@
             <artifactId>fastjson</artifactId>
             <version>1.2.83</version>
         </dependency>
+        <!-- 配置rocketmq解决redis预扣减库存使用消息表的不可靠和xxljob轮询的低性能-->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>2.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-tools</artifactId>
+            <!-- 版本必须与你的 rocketmq-spring-boot-starter 中的 rocketmq-client 版本一致 -->
+            <version>4.9.4</version>
+        </dependency>
     </dependencies>
     <build>
         <finalName>${project.artifactId}</finalName>

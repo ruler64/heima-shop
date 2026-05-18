@@ -44,4 +44,11 @@ public interface MQConstants {
      * 设置最大重试次数
      */
     Integer MAX_RETRY_TIMES = 3;
+
+    /**
+     * rocketMQ常量
+     * 取消订单与恢复库存半事务消息的topic与消费者组
+     */
+    public static final String ROCKETMQ_CANCEL_TOPIC = "TRADE_CANCEL_TOPIC";
+    public static final String ROCKETMQ_CANCEL_CONSUMER_GROUP = "trade-cancel-consumer-group";
 }

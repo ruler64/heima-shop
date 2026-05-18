@@ -114,4 +114,8 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
             throw new IllegalStateException("更新 item_stock_version 对账修复版本失败, itemId=" + itemId);
         }
     }
+    @Override
+    public Long getMaxMysqlEpoch() {
+        return baseMapper.selectMaxMysqlEpoch();
+    }
 }

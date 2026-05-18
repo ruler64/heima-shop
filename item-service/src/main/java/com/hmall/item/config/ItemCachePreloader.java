@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Order(1) // 先于 EpochInitializer 执行
 public class ItemCachePreloader implements ApplicationRunner {
 
     private final IItemService itemService;
@@ -32,7 +34,7 @@ public class ItemCachePreloader implements ApplicationRunner {
     public static final String ITEM_STOCK_VERSION_KEY_PREFIX = "item:stock:ver:{stock}:";
     public static final String ITEM_STOCK_EPOCH_KEY = "item:stock:epoch:{stock}";
     public static final String ITEM_STOCK_SEQ_KEY = "item:stock:seq:{stock}";
-    public static final String ITEM_MYSQL_STOCK_SEQ_KEY = "item:stock:mysql:seq:{stock}";
+    //public static final String ITEM_MYSQL_STOCK_SEQ_KEY = "item:stock:mysql:seq:{stock}";
 
     @Override
     public void run(ApplicationArguments args) {
@@ -56,11 +58,13 @@ public class ItemCachePreloader implements ApplicationRunner {
                     60+ RandomUtil.randomInt(0, 10), TimeUnit.MINUTES
             );
             // 库存 key 专门给 Lua 预扣减使用，避免和详情 JSON 混用
+            // 库存 key 每次都覆盖写（failover 后从 MySQL 事实源恢复）
             stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(item.getStock()));
+            /*删除以下两行，交由 EpochInitializer 管理
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_EPOCH_KEY, "1");
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_SEQ_KEY, "0");
             stringRedisTemplate.opsForValue().setIfAbsent(ITEM_MYSQL_STOCK_SEQ_KEY, "0");
-            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_VERSION_KEY_PREFIX + item.getId(), "1|0");
+            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_VERSION_KEY_PREFIX + item.getId(), "1|0");*/
 
             // 写入 ZSet 索引 (Score用更新时间戳，TTL: 30分钟)
             long score = item.getUpdateTime() != null ?

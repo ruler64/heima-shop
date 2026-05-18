@@ -18,6 +18,9 @@ import com.hmall.common.utils.UserContext;
 
 import com.hmall.trade.constants.LuaConstants;
 import com.hmall.trade.constants.MQConstants;
+import com.hmall.trade.constants.RedisConstants;
+import com.hmall.trade.domain.dto.CancelExecutionContext;
+import com.hmall.trade.domain.dto.LuaExecutionContext;
 import com.hmall.trade.domain.dto.OrderFormDTO;
 import com.hmall.trade.domain.enmu.OrderStatusEnum;
 import com.hmall.trade.domain.po.LocalEventOutbox;
@@ -29,6 +32,9 @@ import com.hmall.trade.service.IOrderDetailService;
 import com.hmall.trade.service.IOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.client.producer.LocalTransactionState;
+import org.apache.rocketmq.client.producer.TransactionSendResult;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.amqp.AmqpException;
@@ -39,12 +45,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -70,19 +78,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 //    private final CartClient cartClient;
     private final RabbitTemplate rabbitTemplate;
     private final RabbitMqHelper rabbitMqHelper;
+    private final RocketMQTemplate rocketMQTemplate;
+
+    // 去掉 final，改用 @Resource（按 Bean 名称注入，不需要 @Qualifier）
+    @Resource(name = "CancelRocketMQTemplate")
+    private RocketMQTemplate cancelRocketMQTemplate;
+
     private final StringRedisTemplate stringRedisTemplate;
     private final LocalEventOutboxMapper localEventOutboxMapper;
-    // NOTE: Redis Cluster Lua 脚本多 key 运行要求所有 KEYS 落在同一个 hash slot。
-    // 因此这里在 key 里使用统一 hash tag：{stock}。
-    public static final String ITEM_STOCK_KEY_PREFIX = "item:stock:{stock}:";
-
-    private static final int OUTBOX_BUCKETS = 16;
-    private static final String OUTBOX_KEY_PREFIX = "trade:local_msg_outbox:{stock}:";
-    private static final String ORDER_CREATED_EVENT = "ORDER_CREATED";
 
     private String buildOutboxKey(Long orderId) {
-        long bucket = Math.floorMod(orderId, OUTBOX_BUCKETS);
-        return OUTBOX_KEY_PREFIX + bucket;
+        long bucket = Math.floorMod(orderId, RedisConstants.OUTBOX_BUCKETS);
+        return RedisConstants.OUTBOX_KEY_PREFIX + bucket;
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
@@ -133,24 +140,69 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         // 2. 准备 Lua 脚本需要的 KEYS 和 ARGV
         List<String> keys = new ArrayList<>();
+        List<Long> itemIds = new ArrayList<>();
         Object[] args = new Object[orderFormDTO.getDetails().size() + 2];
 
         int i = 0;
         for (; i < orderFormDTO.getDetails().size(); i++) {
             OrderDetailDTO detail = orderFormDTO.getDetails().get(i);
-            keys.add(ITEM_STOCK_KEY_PREFIX + detail.getItemId());
+            keys.add(RedisConstants.ITEM_STOCK_KEY_PREFIX + detail.getItemId());
+            itemIds.add(detail.getItemId());
             args[i] = String.valueOf(detail.getNum());
         }
         // Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
         String outboxKey = buildOutboxKey(orderId);
         // 这里仍然沿用 outbox 存储消息，确保 MQ 双写一致性。
         // Lua 脚本只依赖库存 key + outbox key；epoch/seq/version 由 Lua 自己在 Redis 中生成。
-        keys.add(outboxKey);
-        keys.add("item:stock:epoch:{stock}");
-        keys.add("item:stock:seq:{stock}");
+        keys.add(outboxKey);                           // KEYS[n+1] outbox
+        keys.add(RedisConstants.LUA_EPOCH);          // KEYS[n+2] epoch
+        keys.add(RedisConstants.LUA_SEQUENCE);            // KEYS[n+3] seq
+        keys.add(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId);     // KEYS[n+4] flag（新增）
         args[i] = String.valueOf(orderId);
         args[i + 1] = msgJson;
-        // 3. 执行 Lua 脚本，原子性扣减库存 + 保存消息！
+
+        // 3. 封装Lua执行上下文，传给事务监听器（新增）
+//        LuaExecutionContext ctx = new LuaExecutionContext();
+//        ctx.setOrderId(String.valueOf(orderId));
+//        ctx.setKeys(keys);
+//        ctx.setArgs(args);
+//        ctx.setItemIds(itemIds);
+        LuaExecutionContext ctx = LuaExecutionContext.builder()
+                .orderId(String.valueOf(orderId))
+                .keys(keys)
+                .args(args)
+                .itemIds(itemIds)
+                .build();
+        // 4. 构建RocketMQ事务消息
+        org.springframework.messaging.Message<String> rocketMsg =
+                org.springframework.messaging.support.MessageBuilder
+                        .withPayload(msgJson)
+                        .setHeader(
+                                org.apache.rocketmq.spring.support.RocketMQHeaders.TRANSACTION_ID,
+                                String.valueOf(orderId)
+                        )
+                        .setHeader("order_create_time", String.valueOf(System.currentTimeMillis())) // 新增
+                        .build();
+
+        // 5. 发送RocketMQ半事务消息
+        //    半消息→Broker持久化→回调executeLocalTransaction执行Lua
+        //    Lua成功→COMMIT→Broker投递给OrderRocketMQConsumer→转发RabbitMQ
+        org.apache.rocketmq.client.producer.TransactionSendResult sendResult =
+                rocketMQTemplate.sendMessageInTransaction(
+                        MQConstants.ROCKETMQ_ORDER_TOPIC,
+                        rocketMsg,
+                        ctx  // 传给executeLocalTransaction的arg参数
+                );
+
+        if (!org.apache.rocketmq.client.producer.LocalTransactionState.COMMIT_MESSAGE
+                .equals(sendResult.getLocalTransactionState())) {
+            log.warn("用户 {} 下单失败，库存不足或Redis异常。orderId={}", userId, orderId);
+            throw new BizIllegalException("部分商品库存不足，下单失败！");
+        }
+
+        log.info("下单成功，RocketMQ事务消息已提交。orderId={}", orderId);
+        return orderId;
+        /*// 3. 执行 Lua 脚本，原子性扣减库存 + 保存消息！
         // 此时就算下一秒机器突然断电炸了，只要 Lua 执行成功，Redis 里必定同时有扣减后的库存和这条待发送的消息。
         Long result = stringRedisTemplate.execute(DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT, keys, args);
 
@@ -159,16 +211,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BizIllegalException("部分商品库存不足，下单失败！");
         }
 
-        /*LocalEventOutbox outbox = new LocalEventOutbox();
-        outbox.setOrderId(orderId);
-        outbox.setEventType(ORDER_CREATED_EVENT);
-        outbox.setPayload(msgJson);
-        // MySQL outbox 只负责“消息是否可靠投递”的事实，不承接 Redis 库存版本事实。
-        // 库存 epoch/seq 由 Redis 预扣链路和 item 库存流水分别独立维护，用于后续对账判断。
-        outbox.setSource("MYSQL");
-        outbox.setStatus(0);
-        outbox.setRetryCount(0);
-        localEventOutboxMapper.insert(outbox);*/
+//        LocalEventOutbox outbox = new LocalEventOutbox();
+//        outbox.setOrderId(orderId);
+//        outbox.setEventType(ORDER_CREATED_EVENT);
+//        outbox.setPayload(msgJson);
+//        // MySQL outbox 只负责“消息是否可靠投递”的事实，不承接 Redis 库存版本事实。
+//        // 库存 epoch/seq 由 Redis 预扣链路和 item 库存流水分别独立维护，用于后续对账判断。
+//        outbox.setSource("MYSQL");
+//        outbox.setStatus(0);
+//        outbox.setRetryCount(0);
+//        localEventOutboxMapper.insert(outbox);
 
         // 4. 尝试直接发送 MQ (Happy Path 提高实时性)
         try {
@@ -186,7 +238,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             // 我们根本不慌，因为消息已经安全地躺在 Redis 的 trade:local_msg_outbox 和 MySQL outbox 里了！
             log.warn("发送 MQ 失败，转入后台定时任务补偿重试，订单号: {}", orderId, e);
         }
-        return orderId;
+        return orderId;*/
     }
 
     @Override
@@ -247,11 +299,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         LocalEventOutbox outbox = new LocalEventOutbox();
         outbox.setOrderId(orderId);
-        outbox.setEventType(ORDER_CREATED_EVENT);
+        outbox.setEventType(RedisConstants.ORDER_CREATED_EVENT);
         outbox.setPayload(JSON.toJSONString(eventPayload));
         outbox.setSource("MYSQL");
         outbox.setStatus(0); // 待发送
         outbox.setRetryCount(0);
+        //优化：不要在下单主链路中同步写消息表，而是改为通过 Canal 监听 MySQL Binlog 的方式，异步进行‘库存 vs 订单’的离线或近实时对账
         localEventOutboxMapper.insert(outbox); // 【核心】和保存订单在同一个事务里！
         log.info("异步落库写入本地消息表成功，orderId={}, outboxId={}", orderId, outbox.getId());
 
@@ -461,6 +514,24 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
     }
 
+    /**
+     * 取消订单本地事务：只更新 MySQL 订单状态。
+     * 不发任何 MQ，不操作 Redis。
+     * MQ 通知由 RocketMQ 事务消息的 COMMIT 后由消费者负责。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateStatusToCancelled(Long orderId) {
+        return lambdaUpdate()
+                .set(Order::getStatus, OrderStatusEnum.CANCELLED.getCode())
+                .set(Order::getCloseTime, LocalDateTime.now())
+                .eq(Order::getId, orderId)
+                .in(Order::getStatus, Arrays.asList(
+                        OrderStatusEnum.UNPAID.getCode(),
+                        OrderStatusEnum.PAID.getCode()))
+                .update();
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelOrderAndRestore(Long orderId, List<OrderDetailDTO> details) {
@@ -477,9 +548,38 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             log.warn("订单 {} 已经是取消/关闭状态，MySQL 侧触发幂等拦截", orderId);
             return;
         }
+        // 组装消息体（通知 item 恢复 MySQL 库存）
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("orderId", orderId);
+        payload.put("details", details);
 
-        // 乐观锁更新：保证状态流转的安全
-        boolean updated = lambdaUpdate()
+        CancelExecutionContext ctx = CancelExecutionContext.builder()
+                .orderId(orderId)
+                .details(details)
+                .build();
+
+        // 构建 RocketMQ 事务消息
+        org.springframework.messaging.Message<String> rocketMsg =
+                MessageBuilder.withPayload(JSON.toJSONString(payload))
+                        .setHeader("cancel_order_id", String.valueOf(orderId))
+                        .setHeader("cancel_create_time", String.valueOf(System.currentTimeMillis()))
+                        .build();
+
+        // 发送半事务消息（本地事务在 CancelOrderTransactionListener 中执行）
+        TransactionSendResult sendResult = cancelRocketMQTemplate.sendMessageInTransaction(
+                MQConstants.ROCKETMQ_CANCEL_TOPIC,
+                rocketMsg,
+                ctx
+        );
+
+        if (!LocalTransactionState.COMMIT_MESSAGE.equals(sendResult.getLocalTransactionState())) {
+            log.error("订单 {} 取消事务消息 ROLLBACK，取消失败", orderId);
+            throw new BizIllegalException("订单取消失败，请重试");
+        }
+
+        log.info("订单 {} 取消事务消息已 COMMIT", orderId);
+        // 如下是使用本地消息表进行取消订单并且补库存。乐观锁更新：保证状态流转的安全
+        /*boolean updated = lambdaUpdate()
                 .set(Order::getStatus, OrderStatusEnum.CANCELLED.getCode())
                 .set(Order::getCloseTime, LocalDateTime.now())
                 .eq(Order::getId, orderId)
@@ -502,11 +602,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             String payloadJson = JSON.toJSONString(payloadMap);
 
             // 任务 1：恢复 Redis 预扣库存---不应该用本地消息表进行mysql与redis的缓存一致性，而应该用canal（无侵入）
-            /*LocalEventOutbox outbox = new LocalEventOutbox();
+            *//*LocalEventOutbox outbox = new LocalEventOutbox();
             // 定义专门的事件类型，方便定时任务区分
             outbox.setEventType("RESTORE_REDIS_STOCK");
             outbox.setPayload(payloadJson);
-            outbox.setStatus(0); // 0-待处理*/
+            outbox.setStatus(0); // 0-待处理*//*
 
             // 任务 2：本地消息表-》xxlJob通知 Item 服务恢复 MySQL 数据库库存
             LocalEventOutbox itemOutbox = new LocalEventOutbox();
@@ -518,7 +618,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             // 【重中之重】：outboxMapper的插入，和订单状态的修改，处在同一个 @Transactional 中！
 //            localEventOutboxMapper.insert(outbox);
             log.info("订单 {} 取消成功，已通知Item 数据库，退库任务(increase)已落库", orderId);
-        }
+        }*/
     }
 
     private Map<String, Object> buildOrderCreatedEventPayload(Long orderId, Long userId,

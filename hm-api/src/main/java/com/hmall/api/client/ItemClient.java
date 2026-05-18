@@ -24,4 +24,16 @@ public interface ItemClient {
 
     @GetMapping("/items/{id}")
     public ItemDTO queryItemById(@PathVariable("id") Long id);
+
+    /**
+     * 懒加载单个商品库存到 Redis。
+     *
+     * <p>trade-service 在 Lua 扣减时发现某商品库存 key 缺失（返回负数 index）时调用。
+     * item-service 从 MySQL 读取当前库存，以短 TTL 写入 Redis，
+     * 供 trade-service 重试 Lua 使用；后续凌晨对账会接管长期同步。
+     *
+     * @param itemId 商品 ID
+     */
+    @PostMapping("/items/stock/load/{itemId}")
+    void loadStockToRedis(@PathVariable("itemId") Long itemId);
 }

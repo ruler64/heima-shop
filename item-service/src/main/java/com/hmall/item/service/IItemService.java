@@ -27,4 +27,6 @@ public interface IItemService extends IService<Item> {
 
     void increaseStock(Long orderId, List<OrderDetailDTO> items);
 
+    void loadStockToRedis(Long itemId);
+
 }

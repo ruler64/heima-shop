@@ -142,6 +142,62 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
         log.info("订单 {} 库存批量扣减成功，并记录幂等流水完毕", orderId);
     }
+
+    /**
+     * 懒加载：将指定商品的 MySQL 库存写入 Redis。
+     *
+     * <p>触发时机：trade-service 执行 Lua 扣减时发现库存 key 缺失（Lua 返回负数 index），
+     * 通过 Feign 调用此方法，写入后重试 Lua。
+     *
+     * <p>设计说明：
+     * <ul>
+     *   <li>TTL 设置为 30 分钟（短 TTL）：不影响凌晨对账接管长期同步逻辑；</li>
+     *   <li>使用 {@code setIfAbsent}：防止并发懒加载时覆盖已经由正常预热写入的值；</li>
+     *   <li>同步初始化 per-item version key（{@code epoch|0}），让对账能正确读取版本快照；</li>
+     *   <li>若商品不存在或已下架，不写入任何 key，让 Lua 继续返回 nil，
+     *       上层会保守 ROLLBACK，不会误扣库存。</li>
+     * </ul>
+     *
+     * @param itemId 商品 ID
+     */
+    @Override
+    public void loadStockToRedis(Long itemId) {
+        // 1. 从 MySQL 查询商品（包含库存）
+        Item item = getById(itemId);
+        if (item == null || item.getStatus() != 1) {
+            // 商品不存在或已下架，不写 Redis：
+            // Lua 重试时仍拿到 nil，上层保守 ROLLBACK，安全
+            log.warn("[懒加载] 商品不存在或已下架，跳过写入 Redis。itemId={}", itemId);
+            return;
+        }
+
+        String stockKey   = ItemCachePreloader.ITEM_STOCK_KEY_PREFIX   + itemId;
+        String versionKey = ItemCachePreloader.ITEM_STOCK_VERSION_KEY_PREFIX + itemId;
+
+        // 2. 写入库存 key（短 TTL = 30min，凌晨对账接管后续同步）
+        //    setIfAbsent：防止并发情况下覆盖已有的预热值
+        Boolean stockSet = stringRedisTemplate.opsForValue()
+                .setIfAbsent(stockKey, String.valueOf(item.getStock()), 30, TimeUnit.MINUTES);
+
+        if (Boolean.TRUE.equals(stockSet)) {
+            log.info("[懒加载] 库存 key 写入成功。itemId={}，stock={}", itemId, item.getStock());
+        } else {
+            // 并发时已有其他线程写入，直接复用，无需覆盖
+            log.info("[懒加载] 库存 key 已存在（并发写入），复用。itemId={}", itemId);
+        }
+
+        // 3. 同步初始化 per-item version key（格式：epoch|seq）
+        //    从 Redis 读取当前全局 epoch，写入 "epoch|0" 作为该商品的版本基准
+        //    让凌晨对账能读取到合理的 redisEpoch，避免触发误报
+        String globalEpoch = stringRedisTemplate.opsForValue()
+                .get(ItemCachePreloader.ITEM_STOCK_EPOCH_KEY);
+        String initVersion = (globalEpoch != null ? globalEpoch : "1") + "|0";
+        stringRedisTemplate.opsForValue()
+                .setIfAbsent(versionKey, initVersion, 30, TimeUnit.MINUTES);
+
+        log.info("[懒加载] per-item version key 初始化完成。itemId={}，version={}", itemId, initVersion);
+    }
+
     /**
      * 核心高并发分页查询：数据与索引分离 + DCL双重检查锁
      */
