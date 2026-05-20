@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class OrderDelayMessageListener {
     private final IOrderDetailService orderDetailService;
     private final PayClient payClient;
     private final RabbitTemplate rabbitTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @RabbitListener(
             concurrency = "16-64",
@@ -51,11 +53,21 @@ public class OrderDelayMessageListener {
         try {
             // 1. 查询订单
             Order order = orderService.getById(orderId);
+            if (order == null) {
+                String flagKey = com.hmall.trade.constants.RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId;
+                Boolean flagExists = stringRedisTemplate.hasKey(flagKey);
+                if (Boolean.TRUE.equals(flagExists)) {
+                    sendRecheckMessage(orderId, recheckTimes + 1, 3 * 60 * 1000);
+                    log.warn("[延迟关单] 订单不存在但flag存在，3分钟后复查。orderId={}", orderId);
+                    channel.basicAck(deliveryTag, false);
+                    return;
+                }
+                log.warn("[延迟关单] 订单不存在且flag不存在，建单已死，安全退出。orderId={}", orderId);
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
 
-            // 2. 检测订单状态，判断是否已支付 (1是未支付)
-            if (order == null || OrderStatusEnum.getByCode(order.getStatus()) != OrderStatusEnum.UNPAID) {
-                // 【大厂细节 1】订单不存在，或者已经被支付/取消了，说明业务已经处理完毕。
-                // 必须直接 ACK 丢弃消息，千万不能抛异常或不处理，否则会无限死循环！
+            if (OrderStatusEnum.getByCode(order.getStatus()) != OrderStatusEnum.UNPAID) {
                 log.info("延迟关单检测：订单 {} 状态非未支付状态，无需关单，直接放行", orderId);
                 channel.basicAck(deliveryTag, false);
                 return;
@@ -74,22 +86,13 @@ public class OrderDelayMessageListener {
             }
 
             if (needRecheck(payStatus, recheckTimes)) {
-                sendRecheckMessage(orderId, recheckTimes + 1);
+                sendRecheckMessage(orderId, recheckTimes + 1, RECHECK_DELAY_MILLIS);
                 log.warn("延迟关单检测：订单 {} 支付状态未知或仍在处理中，{} 秒后第 {} 次复查，payStatus={}",
                         orderId, RECHECK_DELAY_MILLIS / 1000, recheckTimes + 1, payStatus);
                 channel.basicAck(deliveryTag, false);
                 return;
             }
 
-            // 4. (冗余逻辑)只有支付中心明确超时/取消，或者多次复查后仍非成功，才进入关单。
-//            if (payStatus != null && !Integer.valueOf(PAY_STATUS_TIMEOUT_OR_CANCELLED).equals(payStatus) && recheckTimes < MAX_RECHECK_TIMES) {
-//                sendRecheckMessage(orderId, recheckTimes + 1);
-//                log.warn("延迟关单检测：订单 {} 支付状态未到终态，延迟复查，payStatus={}, recheckTimes={}", orderId, payStatus, recheckTimes + 1);
-//                channel.basicAck(deliveryTag, false);
-//                return;
-//            }
-
-            // 5. 确认未支付或复查耗尽，执行关单与退库任务。
             List<OrderDetail> detailList = orderDetailService.lambdaQuery()
                     .eq(OrderDetail::getOrderId, orderId)
                     .list();
@@ -128,13 +131,13 @@ public class OrderDelayMessageListener {
         }
     }
 
-    private void sendRecheckMessage(Long orderId, int recheckTimes) {
+    private void sendRecheckMessage(Long orderId, int recheckTimes, int delayMillis) {
         rabbitTemplate.convertAndSend(
                 MQConstants.DELAY_EXCHANGE_NAME,
                 MQConstants.DELAY_ORDER_KEY,
                 orderId,
                 msg -> {
-                    msg.getMessageProperties().setDelay(RECHECK_DELAY_MILLIS);
+                    msg.getMessageProperties().setDelay(delayMillis);
                     msg.getMessageProperties().setHeader("x-order-pay-recheck-times", recheckTimes);
                     return msg;
                 }

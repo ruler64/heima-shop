@@ -49,15 +49,49 @@ public interface MQConstants {
     Integer MAX_RETRY_TIMES = 3;
 
     /**
+     * 执行LUA脚本预扣减Redis库存的半事务消息
+     */
+    String ROCKETMQ_LUA_TOPIC = "LUA_TOPIC";
+    String ROCKETMQ_LUA_CONSUMER_GROUP = "lua-consumer-group";
+    /**
      * rocketMQ常量
      * 下单半事务消息的topic与消费者组
      */
-    public static final String ROCKETMQ_ORDER_TOPIC = "TRADE_ORDER_TOPIC";
-    public static final String ROCKETMQ_ORDER_CONSUMER_GROUP = "trade-order-consumer-group";
+    String ROCKETMQ_ORDER_TOPIC = "TRADE_ORDER_TOPIC";
+    String ROCKETMQ_ORDER_CONSUMER_GROUP = "trade-order-consumer-group";
     /**
      * rocketMQ常量
      * 取消订单与恢复库存半事务消息的topic与消费者组
      */
-    public static final String ROCKETMQ_CANCEL_TOPIC = "TRADE_CANCEL_TOPIC";
-    public static final String ROCKETMQ_CANCEL_CONSUMER_GROUP = "trade-cancel-consumer-group";
+    String ROCKETMQ_CANCEL_TOPIC = "TRADE_CANCEL_TOPIC";
+    String ROCKETMQ_CANCEL_CONSUMER_GROUP = "trade-cancel-consumer-group";
+
+    /**
+     * RocketMQ 核心订单落库事务 Topic (一端提交，多端订阅)
+     * 与他对应的消费者组
+     */
+    String ROCKETMQ_DB_ORDER_TOPIC = "TRADE_DB_ORDER_TOPIC";
+    String ROCKETMQ_DB_ORDER_PRODUCER_GROUP = "trade-db-order-producer-group";//半事务消息消费者组
+
+    /**
+     * 各服务对应的 RocketMQ 消费组名称
+     */
+    String ROCKETMQ_ITEM_DEDUCT_GROUP = "item-stock-deduct-group";
+    String ROCKETMQ_CART_CLEAR_GROUP = "cart-clear-group";
+    String ROCKETMQ_ORDER_DELAY_GROUP = "trade-order-delay-check-group";
+
+    /**
+     * 监听延迟消息的topic和消费者 TTL=20min
+     */
+    String ROCKETMQ_DELAY_CLOSE_TOPIC = "TRADE_DELAY_CLOSE_TOPIC";
+    String ROCKETMQ_DELAY_CLOSE_GROUP = "trade-delay-close-consumer-group";
+
+    /**
+     * Canal用于监听创建订单事件，毫秒级发送消息给下游消费者；不保证一定成功，只监听一次insert；
+     * 如果不成功用xxlJob轮询兜底。这里用topic
+     */
+    String ORDER_CANAL_RABBITMQ_EXCHANGE = "canal.exchange";
+    String ORDER_CANAL_RABBITMQ_QUEUE = "canal.outbox.sync.queue";
+    String ORDER_CANAL_RABBITMQ_KEY = "canal.insert.outbox";
+
 }

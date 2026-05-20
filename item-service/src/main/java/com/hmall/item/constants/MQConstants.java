@@ -51,4 +51,16 @@ public interface MQConstants {
      */
     public static final String ROCKETMQ_CANCEL_TOPIC = "TRADE_CANCEL_TOPIC";
     public static final String ROCKETMQ_CANCEL_CONSUMER_GROUP = "trade-cancel-consumer-group";
+
+    /**
+     * RocketMQ 核心订单落库事务 Topic (一端提交，多端订阅)
+     * 与他对应的消费者组
+     */
+    String ROCKETMQ_DB_ORDER_TOPIC = "TRADE_DB_ORDER_TOPIC";
+    String ROCKETMQ_DB_ORDER_PRODUCER_GROUP = "trade-db-order-producer-group";//半事务消息消费者组
+
+    /**
+     * 各服务对应的 RocketMQ 消费组名称
+     */
+    String ROCKETMQ_ITEM_DEDUCT_GROUP = "item-stock-deduct-group";
 }

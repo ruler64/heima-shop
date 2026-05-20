@@ -19,14 +19,14 @@ hm:
 rocketmq:
   name-server: 192.168.31.128:9876
   cluster-name: DefaultCluster   # 新增，与 Broker 实际集群名对齐
-  producer:
-    group: trade-producer-group
-    send-message-timeout: 3000
-    retry-times-when-send-failed: 2
-  consumer:
-    group: trade-order-consumer-group
-    # 等价于prefetch，每次从Broker拉取的最大消息数
-    pull-batch-size: 20
+#  producer:
+#    group: trade-producer-group
+#    send-message-timeout: 3000
+#    retry-times-when-send-failed: 2
+#  consumer:
+#    group: trade-order-consumer-group
+#    # 等价于prefetch，每次从Broker拉取的最大消息数
+#    pull-batch-size: 20
 spring:
 #  mvc:
 #    pathmatch:

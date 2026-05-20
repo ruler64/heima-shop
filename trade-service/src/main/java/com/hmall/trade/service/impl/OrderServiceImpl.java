@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.client.producer.LocalTransactionState;
 import org.apache.rocketmq.client.producer.TransactionSendResult;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.apache.rocketmq.spring.support.RocketMQHeaders;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.amqp.AmqpException;
@@ -84,12 +85,20 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Resource(name = "CancelRocketMQTemplate")
     private RocketMQTemplate cancelRocketMQTemplate;
 
+    @Resource(name = "LuaRocketMQTemplate")
+    private RocketMQTemplate luaRocketMQTemplate;
+
     private final StringRedisTemplate stringRedisTemplate;
     private final LocalEventOutboxMapper localEventOutboxMapper;
 
-    private String buildOutboxKey(Long orderId) {
+    /*private String buildOutboxKey(Long orderId) {
         long bucket = Math.floorMod(orderId, RedisConstants.OUTBOX_BUCKETS);
         return RedisConstants.OUTBOX_KEY_PREFIX + bucket;
+    }*/
+
+    // ✅ 新增：每订单独立 key
+    private String buildIdemKey(Long orderId) {
+        return RedisConstants.ORDER_IDEM_KEY_PREFIX + orderId;
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
@@ -150,23 +159,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             itemIds.add(detail.getItemId());
             args[i] = String.valueOf(detail.getNum());
         }
-        // Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
-        String outboxKey = buildOutboxKey(orderId);
+        // Redis HASH 无法对单个 field 设置 TTL，随订单增多无限膨胀。Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
+//        String outboxKey = buildOutboxKey(orderId);
+        String idemKey = buildIdemKey(orderId);
         // 这里仍然沿用 outbox 存储消息，确保 MQ 双写一致性。
         // Lua 脚本只依赖库存 key + outbox key；epoch/seq/version 由 Lua 自己在 Redis 中生成。
-        keys.add(outboxKey);                           // KEYS[n+1] outbox
+//        keys.add(outboxKey);                           // KEYS[n+1] outbox
+        keys.add(idemKey);   // KEYS[n+1] idem String key，TTL=24h
         keys.add(RedisConstants.LUA_EPOCH);          // KEYS[n+2] epoch
         keys.add(RedisConstants.LUA_SEQUENCE);            // KEYS[n+3] seq
         keys.add(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId);     // KEYS[n+4] flag（新增）
         args[i] = String.valueOf(orderId);
         args[i + 1] = msgJson;
-
         // 3. 封装Lua执行上下文，传给事务监听器（新增）
-//        LuaExecutionContext ctx = new LuaExecutionContext();
-//        ctx.setOrderId(String.valueOf(orderId));
-//        ctx.setKeys(keys);
-//        ctx.setArgs(args);
-//        ctx.setItemIds(itemIds);
         LuaExecutionContext ctx = LuaExecutionContext.builder()
                 .orderId(String.valueOf(orderId))
                 .keys(keys)
@@ -181,14 +186,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                                 org.apache.rocketmq.spring.support.RocketMQHeaders.TRANSACTION_ID,
                                 String.valueOf(orderId)
                         )
-                        .setHeader("order_create_time", String.valueOf(System.currentTimeMillis())) // 新增
+                        .setHeader("order_create_time", String.valueOf(System.currentTimeMillis()))
                         .build();
 
         // 5. 发送RocketMQ半事务消息
         //    半消息→Broker持久化→回调executeLocalTransaction执行Lua
         //    Lua成功→COMMIT→Broker投递给OrderRocketMQConsumer→转发RabbitMQ
         org.apache.rocketmq.client.producer.TransactionSendResult sendResult =
-                rocketMQTemplate.sendMessageInTransaction(
+                luaRocketMQTemplate.sendMessageInTransaction(
                         MQConstants.ROCKETMQ_ORDER_TOPIC,
                         rocketMsg,
                         ctx  // 传给executeLocalTransaction的arg参数
@@ -242,7 +247,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    // 【大厂细节 1：剔除 Seata】摒弃沉重的分布式事务，改用普通的本地事务。跨服务的一致性交由 MQ 重试来保障。
     @Transactional(rollbackFor = Exception.class)
     public void handleDbOrder(Long orderId, Long userId, OrderFormDTO orderFormDTO) {
         log.info("开始异步落库，orderId={}, userId={}", orderId, userId);
@@ -292,7 +296,46 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         List<OrderDetail> details = buildDetails(orderId, items, itemNumMap);
         detailService.saveBatch(details);
         log.info("异步落库保存订单明细成功，orderId={}, detailCount={}", orderId, details.size());
-        // ================== 【大厂绝杀重构】 ==================
+
+        Map<String, Object> broadcastPayload = buildOrderCreatedEventPayload(orderId, userId, detailDTOS, itemIds);
+        /*broadcastPayload.put("orderId", orderId);
+        broadcastPayload.put("userId", userId);
+        broadcastPayload.put("orderForm", orderFormDTO);
+        broadcastPayload.put("details", detailDTOS);
+        broadcastPayload.put("itemIds", detailDTOS.stream().map(OrderDetailDTO::getItemId).collect(Collectors.toList()));*/
+        String payloadJson = JSON.toJSONString(broadcastPayload);
+
+        LocalEventOutbox outbox = new LocalEventOutbox();
+        outbox.setOrderId(orderId);
+        outbox.setEventType("DB_ORDER_BROADCAST");
+        outbox.setPayload(payloadJson);
+        outbox.setSource("MYSQL");
+        outbox.setStatus(0);
+        outbox.setRetryCount(0);
+        outbox.setCreateTime(LocalDateTime.now());
+        outbox.setUpdateTime(LocalDateTime.now());
+        localEventOutboxMapper.insert(outbox);//本地消息表是否可以被canal替代？
+        log.info("异步落库写入本地事件 outbox 成功，orderId={}, outboxId={}", orderId, outbox.getId());
+
+        final Long outboxId = outbox.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    rocketMQTemplate.syncSend(
+                            MQConstants.ROCKETMQ_DB_ORDER_TOPIC,
+                            MessageBuilder.withPayload(payloadJson)
+                                    .setHeader(RocketMQHeaders.KEYS, String.valueOf(orderId))
+                                    .build()
+                    );
+                    localEventOutboxMapper.updateStatus(outboxId, 1);
+                    log.info("[建单] afterCommit 广播成功。orderId={}", orderId);
+                } catch (Exception e) {
+                    log.warn("[建单] afterCommit 广播失败，等待 XXL-Job 补偿。orderId={}", orderId, e);
+                }
+            }
+        });
+        /*// ================== 【大厂绝杀重构】 ==================
         // 3. 彻底删除 itemClient 和 cartClient 的调用！
         // 4. 将需要通知下游的消息，组装成 JSON，写入本地消息表
         Map<String, Object> eventPayload = buildOrderCreatedEventPayload(orderId, userId, detailDTOS, itemIds);
@@ -346,7 +389,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     log.warn("实时派发订单创建事件失败，将由定时任务补偿", e);
                 }
             }
-        });
+        });*/
     }
     /*采用client客户端远程RPC调用，存在大问题
         @Override

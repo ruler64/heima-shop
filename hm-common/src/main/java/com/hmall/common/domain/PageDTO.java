@@ -60,9 +60,9 @@ public class PageDTO<T> {
     }
 
     public static <T, R> PageDTO<T> of(Page<R> page, Class<T> clazz) {
-        PageDTO<T> dto = new PageDTO<>(page.getTotal(), page.getPages(), BeanUtils.copyList(page.getRecords(), clazz));
-        System.out.println("page.getPages() = " + dto.pages);
-        System.out.println("page.getTotal() = " + dto.total);
+        //PageDTO<T> dto = new PageDTO<>(page.getTotal(), page.getPages(), BeanUtils.copyList(page.getRecords(), clazz));
+        //System.out.println("page.getPages() = " + dto.pages);
+        //System.out.println("page.getTotal() = " + dto.total);
         return new PageDTO<>(page.getTotal(), page.getPages(), BeanUtils.copyList(page.getRecords(), clazz));
     }
 

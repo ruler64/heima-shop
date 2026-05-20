@@ -49,7 +49,7 @@
 --return 0
 
 -- batch_deduct_stock.lua
--- KEYS: KEYS[1..n] 库存key, KEYS[n+1] outbox key, KEYS[n+2] epoch key,
+-- KEYS: KEYS[1..n] 库存key, KEYS[n+1] idem key（String，替代原 outbox hash）, KEYS[n+2] epoch key,
 --       KEYS[n+3] seq key, KEYS[n+4] flag key（新增）
 -- ARGV: ARGV[1..n] 扣减数量, ARGV[n+1] orderId, ARGV[n+2] 消息JSON
 -- 返回值约定（应用层必须遵守）：
@@ -59,15 +59,16 @@
 --  +(i)  i>0   → 第 i 个商品库存真实不足，直接拒单
 
 local item_count = #KEYS - 4  -- 原来是3，现在改为4
-local outbox_key = KEYS[item_count + 1]
+--local outbox_key = KEYS[item_count + 1]
+local idem_key   = KEYS[item_count + 1]  -- ✅ String key per order，有 TTL
 local epoch_key  = KEYS[item_count + 2]
 local seq_key    = KEYS[item_count + 3]
 local flag_key   = KEYS[item_count + 4]  -- 新增：RocketMQ反查凭证
 local order_id   = ARGV[item_count + 1]
-local payload    = ARGV[item_count + 2]
+--local payload    = ARGV[item_count + 2]   -- 消息JSON 保留（用于日志追踪，不再写 Redis）
 
--- 0. 订单维度幂等：重复orderId直接放行
-if redis.call('HEXISTS', outbox_key, order_id) == 1 then
+-- 0. 订单维度幂等：EXISTS 替代 HEXISTS（单 key，TTL 到期自动清理）重复orderId直接放行
+if redis.call('EXISTS', idem_key) == 1 then
     return 0
 end
 
@@ -110,18 +111,22 @@ end
 
 -- 4. 生成版本号并写入outbox
 local seq = redis.call('INCR', seq_key)
-local version = tostring(epoch) .. '|' .. tostring(seq)
-local enriched_payload = cjson.decode(payload)
-enriched_payload['epoch']   = tonumber(epoch)
-enriched_payload['seq']     = tonumber(seq)
-enriched_payload['version'] = version
-enriched_payload['source']  = 'REDIS'
-redis.call('HSET', outbox_key, order_id, cjson.encode(enriched_payload))
+--local version = tostring(epoch) .. '|' .. tostring(seq)
+--local enriched_payload = cjson.decode(payload)
+--enriched_payload['epoch']   = tonumber(epoch)
+--enriched_payload['seq']     = tonumber(seq)
+--enriched_payload['version'] = version
+--enriched_payload['source']  = 'REDIS'
+--redis.call('HSET', outbox_key, order_id, cjson.encode(enriched_payload))
 
--- 5. 【新增】原子写入RocketMQ反查凭证，TTL=1小时（覆盖Broker默认反查窗口60秒一次，总共默认15次）
+-- 5. ✅ 写幂等 key（String + TTL=24h，替代原 HSET outbox）
+--    {stock} hash tag 保证与库存 key 同 slot，Lua 原子性满足
+redis.call('SET', idem_key, '1', 'EX', 86400)
+
+-- 5. 【新增】原子写入RocketMQ反查凭证，TTL=24小时（覆盖Broker默认反查窗口60秒一次，总共默认15次）
 --    flag_key 和库存 key 同在 {stock} hash tag 下，保证原子性：
 --    flag 存在 ↔ 库存已扣；主从切换一起丢时两边状态一致，安全 ROLLBACK
-redis.call('SET', flag_key, '1', 'EX', 3600)
+redis.call('SET', flag_key, '1', 'EX', 86400)
 
 -- 6. 成功返回0
 return 0

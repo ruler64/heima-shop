@@ -8,6 +8,12 @@ public interface RedisConstants {
     String OUTBOX_KEY_PREFIX = "trade:local_msg_outbox:{stock}:";
 
     /**
+     * 用于做幂等校验的key的前缀，拼上哈希16后的orderId作为key
+     */
+    // ✅ 新增：每订单独立幂等 key，TTL=24h 自动清理
+    String ORDER_IDEM_KEY_PREFIX = "trade:order:idem:{stock}:";
+
+    /**
      * Redis outbox：分桶降低单 Key 大 Hash 的体积与热点
      * 默认Hash分桶数量为16
      */

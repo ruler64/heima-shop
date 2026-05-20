@@ -2,6 +2,7 @@ package com.hmall.trade.listener.rocket;
 
 import com.hmall.api.client.ItemClient;
 import com.hmall.common.exception.BizIllegalException;
+import com.hmall.trade.constants.RedisConstants;
 import com.hmall.trade.domain.dto.LuaExecutionContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,15 +10,15 @@ import org.apache.rocketmq.spring.annotation.RocketMQTransactionListener;
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionListener;
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionState;
 import org.apache.rocketmq.spring.support.RocketMQHeaders;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.messaging.Message;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@RocketMQTransactionListener
+@RocketMQTransactionListener(rocketMQTemplateBeanName = "LuaRocketMQTemplate")
 @RequiredArgsConstructor
 public class OrderTransactionListener implements RocketMQLocalTransactionListener {
 
@@ -51,23 +52,9 @@ public class OrderTransactionListener implements RocketMQLocalTransactionListene
                     ctx.getArgs()
             );
             return handleLuaResult(result, ctx, orderId, false);
-//            if (result != null && result.equals(0L)) {
-//                // 0 = 成功（含幂等放行）
-//                log.info("[RocketMQ事务] Lua扣减成功，COMMIT。orderId={}", orderId);
-//                return RocketMQLocalTransactionState.COMMIT;
-//            } else if (result != null && result.equals(-99L)) {
-//                // epoch 在运行时丢失（极罕见），拒单保护，触发告警
-//                log.error("[StockDeduct] Redis epoch 运行时丢失，拒绝下单，orderId={}", orderId);
-//                throw new BizIllegalException("系统繁忙，请稍后重试");
-//            } else {
-//                // 返回>0 = 第result个商品库存不足
-//                log.warn("[RocketMQ事务] 库存不足，ROLLBACK。orderId={}，失败商品index={}",
-//                        orderId, result);
-//                return RocketMQLocalTransactionState.ROLLBACK;
-//            }
-        }catch (BizIllegalException e) {
-                log.error("[RocketMQ事务] 业务异常，ROLLBACK。orderId={}, msg={}", orderId, e.getMessage());
-                return RocketMQLocalTransactionState.ROLLBACK;//直接取消不再把消息投递到MQ重试
+        } catch (BizIllegalException e) {
+            log.error("[RocketMQ事务] 业务异常，ROLLBACK。orderId={}, msg={}", orderId, e.getMessage());
+            return RocketMQLocalTransactionState.ROLLBACK;
         } catch (Exception e) {
             // Redis异常：状态未知，等Broker来反查
             log.error("[RocketMQ事务] Lua执行异常，进入UNKNOWN。orderId={}", orderId, e);
@@ -94,8 +81,7 @@ public class OrderTransactionListener implements RocketMQLocalTransactionListene
 
             // 10秒内查不到flag，认为Lua还在执行，继续等待
             if (elapsed < 10_000L) {
-                log.warn("[RocketMQ反查] 距创建仅{}ms，Lua可能仍在执行，返回UNKNOWN等待下次反查。orderId={}",
-                        elapsed, orderId);
+                log.warn("[RocketMQ反查] 距创建仅{}ms，Lua可能仍在执行，返回UNKNOWN等待下次反查。orderId={}", elapsed, orderId);
                 return RocketMQLocalTransactionState.UNKNOWN;
             }
         }
@@ -158,10 +144,8 @@ public class OrderTransactionListener implements RocketMQLocalTransactionListene
             log.warn("[RocketMQ事务] 库存 key 缺失，触发懒加载。orderId={}，itemId={}", orderId, missingItemId);
 
             try {
-                // item-service 负责将 MySQL 库存写入 Redis（带短 TTL，凌晨对账接管后续同步）
                 itemClient.loadStockToRedis(missingItemId);
                 log.info("[RocketMQ事务] 懒加载完成，开始单次重试。orderId={}，itemId={}", orderId, missingItemId);
-
                 Long retryResult = executeLua(ctx);
                 return handleLuaResult(retryResult, ctx, orderId, true);  // isRetry=true
 

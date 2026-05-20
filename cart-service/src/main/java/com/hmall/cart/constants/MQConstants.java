@@ -21,4 +21,16 @@ public interface MQConstants {
      * 设置最大重试次数
      */
     Integer MAX_RETRY_TIMES = 3;
+
+    /**
+     * RocketMQ 核心订单落库事务 Topic (一端提交，多端订阅)
+     * 与他对应的消费者组
+     */
+    String ROCKETMQ_DB_ORDER_TOPIC = "TRADE_DB_ORDER_TOPIC";
+    String ROCKETMQ_DB_ORDER_PRODUCER_GROUP = "trade-db-order-producer-group";//半事务消息消费者组
+
+    /**
+     * 各服务对应的 RocketMQ 消费组名称
+     */
+    String ROCKETMQ_CART_CLEAR_GROUP = "cart-clear-group";
 }

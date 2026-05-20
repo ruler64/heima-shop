@@ -67,8 +67,8 @@ public class CancelOrderTransactionListener implements RocketMQLocalTransactionL
     @Override
     public RocketMQLocalTransactionState checkLocalTransaction(Message msg) {
         String orderId = (String) msg.getHeaders().get("cancel_order_id");
-        log.warn("[取消反查] Broker 反查。orderId={}", orderId);
-//        try {
+        log.warn("[取消订单反查] Broker 反查。orderId={}", orderId);
+        try {
             // 优先查 Redis flag（快）
             String flag = stringRedisTemplate.opsForValue().get("cancel:flag:" + orderId);
             if ("1".equals(flag)) {
@@ -83,7 +83,18 @@ public class CancelOrderTransactionListener implements RocketMQLocalTransactionL
                 return RocketMQLocalTransactionState.COMMIT;
             }
 
+            // 3. 确认本地事务未执行 → 立即 ROLLBACK
+            // 让 XXL-Job 扫到后重新触发 cancelOrderAndRestore 发新消息
+            // 比 UNKNOWN 等待15分钟再被强制 ROLLBACK 更快收敛
+            log.warn("[取消反查] 本地事务未执行，ROLLBACK。交由 XXL-Job 兜底。orderId={}", orderId);
+            return RocketMQLocalTransactionState.ROLLBACK;
+        } catch (Exception e) {
+            // 注意：只有这里才应该返回 UNKNOWN
+            // 原因：查询本身抛异常，说明无法判断状态（DB 宕机、网络超时等）
+            // 此时确实不知道本地事务是否执行了，等待下次反查是合理的
+            log.error("[取消反查] 查询异常，无法判断状态，UNKNOWN。orderId={}", orderId, e);
             return RocketMQLocalTransactionState.UNKNOWN;
+        }
             /*// 3. 【精髓：在反查中重试本地事务】
             // 如果走到这里，说明之前的 executeLocalTransaction 抛异常没执行成功。
             // 既然你要求“必须成功”，那我们就借用反查的线程，再尝试执行一次！

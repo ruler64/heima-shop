@@ -36,9 +36,15 @@ public class ItemRocketMQTopicInitializer implements ApplicationRunner {
 
         try {
             admin.start();
-            // item-service 消费的 Topic
+            // item 订阅 TRADE_DB_ORDER_TOPIC 扣减库存
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_DB_ORDER_TOPIC, 8);
+            createTopicIfAbsent(admin,
+                    "%DLQ%"+MQConstants.ROCKETMQ_ITEM_DEDUCT_GROUP, 1);
+
+            // item 订阅 TRADE_CANCEL_TOPIC 恢复库存
             createTopicIfAbsent(admin, MQConstants.ROCKETMQ_CANCEL_TOPIC, 8);
-            createTopicIfAbsent(admin, "%DLQ%"+MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP, 1);
+            createTopicIfAbsent(admin,
+                    "%DLQ%"+MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP, 1);
         } catch (Exception e) {
             log.error("[RocketMQ] item-service Topic 初始化失败", e);
         } finally {

@@ -44,16 +44,35 @@ public class RocketMQTopicInitializer implements ApplicationRunner {
         try {
             admin.start();
 
-            // 需要创建的所有 Topic
-            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_ORDER_TOPIC, QUEUE_NUM);
+            // ===== 下单主链路 =====
+            // 预扣成功消息（trade内部流转）
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_LUA_TOPIC, QUEUE_NUM);
+            createTopicIfAbsent(admin,
+                    "%DLQ%" + MQConstants.ROCKETMQ_LUA_CONSUMER_GROUP, DEAD_QUEUE_NUM);
 
-            // 死信 Topic：固定命名规则 %DLQ%{consumerGroup}
-            // 队列数固定为 1（死信量极少，不需要多队列并发）
+            //普通订单链路
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_ORDER_TOPIC, QUEUE_NUM);
             createTopicIfAbsent(admin,
                     "%DLQ%" + MQConstants.ROCKETMQ_ORDER_CONSUMER_GROUP, DEAD_QUEUE_NUM);
 
-            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_CANCEL_TOPIC, 8);
-            createTopicIfAbsent(admin, "%DLQ%" + MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP, 1);
+            // 落库广播（trade→item/cart/trade三方订阅）
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_DB_ORDER_TOPIC, QUEUE_NUM);
+            // 三个消费者组各自的死信队列
+            createTopicIfAbsent(admin,
+                    "%DLQ%" + MQConstants.ROCKETMQ_ITEM_DEDUCT_GROUP, DEAD_QUEUE_NUM);
+            createTopicIfAbsent(admin,
+                    "%DLQ%" + MQConstants.ROCKETMQ_CART_CLEAR_GROUP, DEAD_QUEUE_NUM);
+            createTopicIfAbsent(admin,
+                    "%DLQ%" + MQConstants.ROCKETMQ_ORDER_DELAY_GROUP, DEAD_QUEUE_NUM);
+
+            // ===== 取消订单链路 =====
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_CANCEL_TOPIC, QUEUE_NUM);
+            createTopicIfAbsent(admin,
+                    "%DLQ%" + MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP, DEAD_QUEUE_NUM);
+            // 延迟消息关单链路
+            createTopicIfAbsent(admin, MQConstants.ROCKETMQ_DELAY_CLOSE_TOPIC, QUEUE_NUM);
+            createTopicIfAbsent(admin, "%DLQ%" + MQConstants.ROCKETMQ_DELAY_CLOSE_GROUP, DEAD_QUEUE_NUM);
+
 
         } catch (Exception e) {
             // Topic 初始化失败不应阻断服务启动（Broker 可能未就绪），打印告警即可
