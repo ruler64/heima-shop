@@ -102,13 +102,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
     // 1. 初始化 Lua 脚本
     // 【注入配置类中定义的 Lua 脚本】
-    @Qualifier("deductStockAndSaveMsgScript")
-    private final DefaultRedisScript<Long> DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT;
-//    static {
-//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT = new DefaultRedisScript<>();
-//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setLocation(new ClassPathResource("lua/batch_deduct_stock.lua"));
-//        DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT.setResultType(Long.class);
-//    }
+//    @Qualifier("deductStockAndSaveMsgScript")
+//    private final DefaultRedisScript<List> DEDUCT_STOCK_AND_SAVE_MSG_SCRIPT;
+
+
     /**
      * 定义一段 Lua 脚本：兼顾【幂等校验】和【批量恢复库存】的原子操作
      * 逻辑：
@@ -150,11 +147,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 2. 准备 Lua 脚本需要的 KEYS 和 ARGV
         List<String> keys = new ArrayList<>();
         List<Long> itemIds = new ArrayList<>();
-        Object[] args = new Object[orderFormDTO.getDetails().size() + 2];
+        Object[] args = new Object[orderFormDTO.getDetails().size() + 1];
 
         int i = 0;
         for (; i < orderFormDTO.getDetails().size(); i++) {
             OrderDetailDTO detail = orderFormDTO.getDetails().get(i);
+            // KEYS[1..n]：库存key
             keys.add(RedisConstants.ITEM_STOCK_KEY_PREFIX + detail.getItemId());
             itemIds.add(detail.getItemId());
             args[i] = String.valueOf(detail.getNum());
@@ -167,10 +165,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 //        keys.add(outboxKey);                           // KEYS[n+1] outbox
         keys.add(idemKey);   // KEYS[n+1] idem String key，TTL=24h
         keys.add(RedisConstants.LUA_EPOCH);          // KEYS[n+2] epoch
-        keys.add(RedisConstants.LUA_SEQUENCE);            // KEYS[n+3] seq
-        keys.add(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId);     // KEYS[n+4] flag（新增）
-        args[i] = String.valueOf(orderId);
-        args[i + 1] = msgJson;
+        //keys.add(RedisConstants.LUA_SEQUENCE);            // 移除全局seq流水号KEYS[n+3] seq
+        keys.add(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId);     // KEYS[n+3] flag
+        args[i] = String.valueOf(orderId);          // ARGV[n+1] orderId
+        // KEYS[n+4..2n+3]：per-item seq keys（新增）
+        for (Long itemId : itemIds) {
+            keys.add(RedisConstants.LUA_SEQUENCE + itemId);
+        }
+        // KEYS[2n+4..3n+3]：per-item ver keys（修复：原来错误地加了stock key）
+        for (Long itemId : itemIds) {
+            keys.add(RedisConstants.ITEM_STOCK_VERSION_KEY_PREFIX + itemId);
+        }
+        //args[i + 1] = msgJson;
         // 3. 封装Lua执行上下文，传给事务监听器（新增）
         LuaExecutionContext ctx = LuaExecutionContext.builder()
                 .orderId(String.valueOf(orderId))
@@ -194,7 +200,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         //    Lua成功→COMMIT→Broker投递给OrderRocketMQConsumer→转发RabbitMQ
         org.apache.rocketmq.client.producer.TransactionSendResult sendResult =
                 luaRocketMQTemplate.sendMessageInTransaction(
-                        MQConstants.ROCKETMQ_ORDER_TOPIC,
+                        MQConstants.ROCKETMQ_LUA_TOPIC,
                         rocketMsg,
                         ctx  // 传给executeLocalTransaction的arg参数
                 );
@@ -576,7 +582,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    //@Transactional(rollbackFor = Exception.class)无用的事务，发送MQ的原子性由MQ本身保证
     public void cancelOrderAndRestore(Long orderId, List<OrderDetailDTO> details) {
         // ==========================================
         // 1. MySQL 侧：幂等校验与订单状态更新
@@ -697,49 +703,5 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     return detail;
                 }).collect(Collectors.toList());
     }
-    /* 没有考虑createOrder中redis和MQ的双写一致性问题
-    public Long createOrder(OrderFormDTO orderFormDTO) {
-        Long userId = UserContext.getUser(); // 从 ThreadLocal 获取用户 ID
 
-        // 1. 准备 Lua 脚本需要的 KEYS 和 ARGV
-        List<String> keys = new ArrayList<>();
-        Object[] args = new Object[orderFormDTO.getDetails().size()];
-
-
-        for (int i = 0;; i < orderFormDTO.getDetails().size(); i++) {
-            OrderDetailDTO detail = orderFormDTO.getDetails().get(i);
-            keys.add("item:stock:" + detail.getItemId()); // Redis中的库存Key
-            args[i] = String.valueOf(detail.getNum());    // 扣减数量
-        }
-
-        // 2. 执行 Lua 脚本，原子性扣减库存
-        Long result = stringRedisTemplate.execute(DEDUCT_STOCK_SCRIPT, keys, args);
-
-        // 3. 判断扣减结果
-        if (result != null && !result.equals(LuaConstants.LUA_SUCCESS)) {
-            // result 返回的是库存不足的商品 ID (需要在 Lua 脚本中约定)
-            log.warn("用户 {} 下单失败，商品 {} 库存不足", userId, result);
-            throw new BizIllegalException("部分商品库存不足，下单失败！"); // 抛出自定义异常给前端
-        }
-
-        // 4. 库存扣减成功，利用雪花算法生成唯一订单号
-        Long orderId = IdWorker.getId();
-
-        // 5. 封装消息发送到 MQ (这部分逻辑不变)
-        Map<String, Object> msg = new HashMap<>();
-        msg.put("orderId", orderId);
-        msg.put("userId", UserContext.getUser());
-        msg.put("orderForm", orderFormDTO);
-        // ... 其他收货地址等信息
-
-        // 6. 发送消息到 RabbitMQ，异步落库
-        //利用common封装的mq重试机制发送消息
-        rabbitMqHelper.sendMessageWithConfirm(MQConstants.ASYNC_ORDER_EXCHANGE,
-                MQConstants.ASYNC_ORDER_KEY,
-                msg,MQConstants.MAX_RETRY_TIMES);
-        log.info("多商品订单已提交异步处理，订单号: {}", orderId);
-        return orderId;
-
-    }
-     */
 }

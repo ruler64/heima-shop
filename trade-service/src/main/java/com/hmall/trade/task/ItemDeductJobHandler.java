@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hmall.common.utils.CollUtils;
 import com.hmall.trade.constants.MQConstants;
 import com.hmall.trade.domain.po.LocalEventOutbox;
+import com.hmall.trade.domain.po.Order;
 import com.hmall.trade.mapper.LocalEventOutboxMapper;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ItemDeductJobHandler {
                         .eq(LocalEventOutbox::getStatus, 0)
                         .eq(LocalEventOutbox::getEventType, "DB_ORDER_BROADCAST")
                         .lt(LocalEventOutbox::getCreateTime, LocalDateTime.now().minusSeconds(30))
+                        .orderByAsc(LocalEventOutbox::getCreateTime)
                         .last("LIMIT 100")
         );
 

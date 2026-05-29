@@ -48,85 +48,152 @@
 ---- 4. 成功返回 0 表示全部扣减成功且消息落库成功
 --return 0
 
+
 -- batch_deduct_stock.lua
--- KEYS: KEYS[1..n] 库存key, KEYS[n+1] idem key（String，替代原 outbox hash）, KEYS[n+2] epoch key,
---       KEYS[n+3] seq key, KEYS[n+4] flag key（新增）
--- ARGV: ARGV[1..n] 扣减数量, ARGV[n+1] orderId, ARGV[n+2] 消息JSON
--- 返回值约定（应用层必须遵守）：
---   0          → 成功（含幂等放行）
---  -99         → 全局 epoch key 丢失，Redis Cluster failover 未完成，拒单保护
---  -(i)  i>0   → 第 i 个商品的库存 key 不存在（Redis 未预热），应用层懒加载后单次重试
---  +(i)  i>0   → 第 i 个商品库存真实不足，直接拒单
+--
+-- KEYS结构（总共 3n+3 个）:
+-- KEYS[1..n]          库存key: item:stock:{stock}:{itemId}
+-- KEYS[n+1]           idem_key: trade:order:idem:{stock}:{orderId}
+-- KEYS[n+2]           epoch_key: item:stock:epoch:{stock}
+-- KEYS[n+3]           flag_key: order:flag:{stock}:{orderId}
+-- KEYS[n+4..2n+3]     per-item seq key: item:stock:seq:{stock}:{itemId}
+-- KEYS[2n+4..3n+3]    per-item ver key: item:stock:ver:{stock}:{itemId}
+--
+-- ARGV结构（总共 n+1 个）:
+-- ARGV[1..n]          扣减数量
+-- ARGV[n+1]           orderId
+--
+-- 返回值（List<Long>）:
+--   {0}       → 成功（含幂等放行）
+--   {-99}     → epoch丢失，拒单
+--   {-i,...}  → 第i个商品库存key缺失（返回所有缺失集合）
+--   {i}       → 第i个商品库存真实不足
 
-local item_count = #KEYS - 4  -- 原来是3，现在改为4
---local outbox_key = KEYS[item_count + 1]
-local idem_key   = KEYS[item_count + 1]  -- ✅ String key per order，有 TTL
-local epoch_key  = KEYS[item_count + 2]
-local seq_key    = KEYS[item_count + 3]
-local flag_key   = KEYS[item_count + 4]  -- 新增：RocketMQ反查凭证
-local order_id   = ARGV[item_count + 1]
---local payload    = ARGV[item_count + 2]   -- 消息JSON 保留（用于日志追踪，不再写 Redis）
+local item_count = math.floor((#KEYS - 3) / 3)
+local idem_key  = KEYS[item_count + 1]
+local epoch_key = KEYS[item_count + 2]
+local flag_key  = KEYS[item_count + 3]
+local order_id  = ARGV[item_count + 1]
 
--- 0. 订单维度幂等：EXISTS 替代 HEXISTS（单 key，TTL 到期自动清理）重复orderId直接放行
+-- 0. 幂等检查
 if redis.call('EXISTS', idem_key) == 1 then
-    return 0
+    return {0}
 end
 
--- 1. 全局 epoch 检查
---    epoch key 丢失 = Redis Cluster failover 后 EpochInitializer 还未写入
---    返回 -99，应用层拒单并告警，等待服务重启完成 epoch 修复
+-- 1. epoch检查（缺失=failover未完成，拒单保护）
 local epoch = redis.call('GET', epoch_key)
 if not epoch then
-    -- ❌ 原来：自愈写 1，掩盖了 failover
-    -- epoch = 1
-    -- redis.call('SET', epoch_key, epoch)
-
-    -- ✅ 现在：返回特殊错误码，由应用层触发 EpochInitializer 重新修复
-    return -99  -- EPOCH_MISSING：应用层收到后应告警 + 拒绝下单，等待 epoch 恢复
+    return {-99}
 end
 
+-- 2. 收集所有缺失的库存key（全量返回，触发批量懒加载）
+local missing_indices = {}
+for i = 1, item_count do
+    if redis.call('EXISTS', KEYS[i]) == 0 then
+        table.insert(missing_indices, -i)
+    end
+end
+if #missing_indices > 0 then
+    return missing_indices
+end
 
--- 2. 校验所有商品库存是否充足
---    两种失败严格区分，让应用层做不同处理：
---    a. stock == nil  → 库存 key 根本不存在（未预热），返回 -(i) 触发懒加载
---    b. stock < demand → 库存真实不足，返回 +(i) 直接拒单
+-- 3. 校验库存充足性（先全量校验再扣减，防止部分成功）
 for i = 1, item_count do
     local stock  = tonumber(redis.call('GET', KEYS[i]))
     local demand = tonumber(ARGV[i])
-    --if stock == nil or stock < demand then
-    --    return i
-    --end
-    if stock == nil then
-        return -i          -- 负数：key 缺失，应用层懒加载后重试
-    end
     if stock < demand then
-        return i           -- 正数：库存真实不足，直接 ROLLBACK
+        return {i}
     end
 end
 
--- 3. 批量扣减库存
+-- 4. 批量扣减库存 + 更新每商品独立版本号（原子完成）
 for i = 1, item_count do
     redis.call('DECRBY', KEYS[i], tonumber(ARGV[i]))
+
+    local seq_key = KEYS[item_count + 3 + i]        -- per-item seq key
+    local ver_key = KEYS[2 * item_count + 3 + i]    -- per-item ver key
+    local seq = redis.call('INCR', seq_key)          -- per-item 自增，互不干扰
+    redis.call('SET', ver_key, tostring(epoch) .. '|' .. tostring(seq))
 end
 
--- 4. 生成版本号并写入outbox
-local seq = redis.call('INCR', seq_key)
---local version = tostring(epoch) .. '|' .. tostring(seq)
---local enriched_payload = cjson.decode(payload)
---enriched_payload['epoch']   = tonumber(epoch)
---enriched_payload['seq']     = tonumber(seq)
---enriched_payload['version'] = version
---enriched_payload['source']  = 'REDIS'
---redis.call('HSET', outbox_key, order_id, cjson.encode(enriched_payload))
-
--- 5. ✅ 写幂等 key（String + TTL=24h，替代原 HSET outbox）
---    {stock} hash tag 保证与库存 key 同 slot，Lua 原子性满足
+-- 5. 写幂等key（24h TTL）和RocketMQ反查凭证
 redis.call('SET', idem_key, '1', 'EX', 86400)
-
--- 5. 【新增】原子写入RocketMQ反查凭证，TTL=24小时（覆盖Broker默认反查窗口60秒一次，总共默认15次）
---    flag_key 和库存 key 同在 {stock} hash tag 下，保证原子性：
---    flag 存在 ↔ 库存已扣；主从切换一起丢时两边状态一致，安全 ROLLBACK
 redis.call('SET', flag_key, '1', 'EX', 86400)
 
--- 6. 成功返回0
-return 0
+return {0}
+
+
+-- batch_deduct_stock.lua
+
+-- KEYS[1..n]      库存key
+-- KEYS[n+1]       idem_key
+-- KEYS[n+2]       epoch_key
+-- KEYS[n+3]       seq_key
+-- KEYS[n+4]       flag_key
+-- KEYS[n+5..2n+4] 版本key（新增）
+-- ARGV[1..n]      扣减数量
+-- ARGV[n+1]       orderId
+
+-- 返回值（统一返回 array，Java侧用 List<Long> 接收）：
+--   {0}       → 成功
+--   {-99}     → epoch丢失
+--   {-i,...}  → 第i个商品库存key缺失（所有缺失的集合）
+--   {i}       → 第i个商品库存真实不足
+
+--local item_count = math.floor((#KEYS - 4) / 2)  -- ← 改为除以2，因为新增了n个版本key,返回浮点，用 math.floor 明确取整
+--local idem_key  = KEYS[item_count + 1]
+--local epoch_key = KEYS[item_count + 2]
+--local seq_key   = KEYS[item_count + 3]
+--local flag_key  = KEYS[item_count + 4]
+--local order_id  = ARGV[item_count + 1]
+--
+---- 0. 幂等检查
+--if redis.call('EXISTS', idem_key) == 1 then
+--    return {0}
+--end
+--
+---- 1. epoch检查
+--local epoch = redis.call('GET', epoch_key)
+--if not epoch then
+--    return {-99}
+--end
+--
+---- 2. 检查所有缺失的库存key（收集全部，不再只返回第一个）
+--local missing_indices = {}
+--for i = 1, item_count do
+--    if redis.call('EXISTS', KEYS[i]) == 0 then
+--        table.insert(missing_indices, -i)  -- 负数表示key缺失
+--    end
+--end
+--
+--if #missing_indices > 0 then
+--    return missing_indices  -- 返回所有缺失商品的index集合
+--end
+--
+---- 3. 校验库存充足性
+--for i = 1, item_count do
+--    local stock  = tonumber(redis.call('GET', KEYS[i]))
+--    local demand = tonumber(ARGV[i])
+--    if stock < demand then
+--        return {i}  -- 正数表示真实不足
+--    end
+--end
+--
+---- 4. 批量扣减库存
+--for i = 1, item_count do
+--    redis.call('DECRBY', KEYS[i], tonumber(ARGV[i]))
+--end
+--
+---- 5. 生成版本号，更新所有商品的版本key（新增）
+--local seq = redis.call('INCR', seq_key)
+--local version = tostring(epoch) .. '|' .. tostring(seq)
+--for i = 1, item_count do
+--    local ver_key = KEYS[item_count + 4 + i]  -- 版本key从n+5开始
+--    redis.call('SET', ver_key, version)        -- 无TTL，与预热保持一致
+--end
+--
+---- 6. 写幂等key和RocketMQ反查凭证
+--redis.call('SET', idem_key, '1', 'EX', 86400)
+--redis.call('SET', flag_key, '1', 'EX', 86400)
+--
+--return {0}

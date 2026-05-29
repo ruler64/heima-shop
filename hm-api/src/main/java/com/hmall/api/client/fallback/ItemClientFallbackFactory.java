@@ -44,6 +44,12 @@ public class ItemClientFallbackFactory implements FallbackFactory<ItemClient> {
                 log.error("加载单个商品库存失败！",cause);
                 return;
             }
+
+            @Override
+            public void batchLoadStockToRedis(List<Long> itemIds) {
+                log.error("批量加载商品库存失败！",cause);
+                return;
+            }
         };
     }
 }

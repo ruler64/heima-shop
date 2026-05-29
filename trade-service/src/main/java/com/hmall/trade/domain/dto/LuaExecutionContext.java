@@ -33,7 +33,7 @@ public class LuaExecutionContext {
 
     /**
      * Lua 脚本的 ARGV 参数：
-     * [qty_1, ..., qty_n, orderId, payloadJson]
+     * [qty_1, ..., qty_n, orderId]
      */
     private Object[] args;
 

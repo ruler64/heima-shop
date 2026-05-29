@@ -111,4 +111,12 @@ public class ItemController {
     public void loadStockToRedis(@PathVariable("itemId") Long itemId) {
         itemService.loadStockToRedis(itemId);
     }
+
+    /**
+     * 批量懒加载商品库存到 Redis（供 trade-service Feign 调用）
+     */
+    @PostMapping("/stock/batch-load")
+    public void batchLoadStockToRedis(@RequestBody List<Long> itemIds) {
+        itemService.batchLoadStockToRedis(itemIds);
+    }
 }

@@ -25,8 +25,14 @@ public interface IItemService extends IService<Item> {
 
     List<ItemDTO> queryItemByIds(Collection<Long> ids);
 
-    void increaseStock(Long orderId, List<OrderDetailDTO> items);
+    boolean increaseStock(Long orderId, List<OrderDetailDTO> items);
 
     void loadStockToRedis(Long itemId);
+
+    /**
+     * 批量懒加载：将多个商品的 MySQL 库存原子写入 Redis。
+     * 供 trade-service 在 Lua 扣减发现 key 缺失时通过 Feign 调用。
+     */
+    void batchLoadStockToRedis(List<Long> itemIds);
 
 }

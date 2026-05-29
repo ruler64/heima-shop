@@ -36,4 +36,10 @@ public interface ItemClient {
      */
     @PostMapping("/items/stock/load/{itemId}")
     void loadStockToRedis(@PathVariable("itemId") Long itemId);
+
+    /**
+     * 批量懒加载库存到 Redis，trade-service Lua 扣减发现 key 缺失时调用
+     */
+    @PostMapping("/items/stock/batch-load")
+    void batchLoadStockToRedis(@RequestBody List<Long> itemIds);
 }

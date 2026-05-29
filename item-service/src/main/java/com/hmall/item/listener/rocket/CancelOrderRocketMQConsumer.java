@@ -5,14 +5,19 @@ import com.alibaba.fastjson.JSONObject;
 import com.hmall.api.dto.OrderDetailDTO;
 import com.hmall.item.config.ItemCachePreloader;
 import com.hmall.item.constants.MQConstants;
+import com.hmall.item.constants.RedisConstants;
 import com.hmall.item.service.IItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,6 +44,9 @@ public class CancelOrderRocketMQConsumer implements RocketMQListener<String> {
 
     private final IItemService itemService;
     private final StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    @Qualifier("restoreRedisStock")
+    private DefaultRedisScript<Long> restoreRedisStockScript;
 
     @Override
     public void onMessage(String msgJson) {
@@ -50,17 +58,26 @@ public class CancelOrderRocketMQConsumer implements RocketMQListener<String> {
         log.info("[取消消费] 收到订单取消消息，开始恢复库存。orderId={}", orderId);
 
         // Step 1：恢复 MySQL 库存（increaseStock 内部有幂等保护，重复消费安全）
+        // increaseStock 返回时有两种情况：
+        //   A. affectedRows=1 → 本次真正执行了恢复（需要恢复Redis）
+        //   B. affectedRows=0 → 幂等拦截，已恢复过（Redis也已处理，直接return）
+        boolean actuallyRestored;
         try {
-            itemService.increaseStock(orderId, details);
-            log.info("[取消消费] MySQL 库存恢复成功。orderId={}", orderId);
+            actuallyRestored = itemService.increaseStock(orderId, details);
         } catch (Exception e) {
             // MySQL 恢复失败，抛异常触发 RocketMQ 重试
             // 不能跳过 MySQL 直接去恢复 Redis，否则两边不一致
             log.error("[取消消费] MySQL 库存恢复失败，触发重试。orderId={}", orderId, e);
             throw new RuntimeException("MySQL 库存恢复失败", e);
         }
+        if (!actuallyRestored) {
+            // 幂等拦截：MySQL已恢复过，Redis也已经处理过了，安全退出
+            log.info("[取消消费] MySQL 幂等拦截，Redis 无需重复处理。orderId={}", orderId);
+            return;
+        }
 
-        // Step 2：恢复 Redis 预扣库存
+        // Step2: MySQL 真正恢复成功后，才恢复 Redis
+        // 以 flag key 为准：有flag=预扣过Redis=需要恢复；无flag=未预扣或已恢复
         // MySQL 已成功，Redis 尽力恢复，失败不重试（凌晨对账兜底）
         try {
             restoreRedisStock(orderId, details);
@@ -78,6 +95,34 @@ public class CancelOrderRocketMQConsumer implements RocketMQListener<String> {
      * 凌晨对账检测到 Redis > MySQL 会用 MySQL 覆盖，最终收敛）。
      */
     private void restoreRedisStock(Long orderId, List<OrderDetailDTO> details) {
+        List<String> keys = new ArrayList<>();
+        keys.add(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId); // KEYS[1] = flagKey
+
+        List<String> args = new ArrayList<>();
+        for (OrderDetailDTO detail : details) {
+            keys.add(ItemCachePreloader.ITEM_STOCK_KEY_PREFIX + detail.getItemId());
+            args.add(String.valueOf(detail.getNum()));
+        }
+
+        Long result = stringRedisTemplate.execute(
+                restoreRedisStockScript,  // DefaultRedisScript<Long>
+                keys,
+                args.toArray(new String[0])
+        );
+
+        if (result != null && result == 1L) {
+            log.info("[取消消费] Redis库存恢复成功，flag已清除。orderId={}", orderId);
+        } else {
+            log.info("[取消消费] Redis flag不存在，幂等跳过。orderId={}", orderId);
+        }
+        /*// 用 flag key 判断该订单是否真的预扣过 Redis 库存
+        String flagKey = RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId;
+        Boolean flagExists = stringRedisTemplate.hasKey(flagKey);
+        if (!Boolean.TRUE.equals(flagExists)) {
+            log.info("[取消消费] flag不存在，Redis未预扣或已恢复，跳过。 orderId={}",
+                     orderId);
+            return;
+        }
         for (OrderDetailDTO detail : details) {
             String stockKey = ItemCachePreloader.ITEM_STOCK_KEY_PREFIX + detail.getItemId();
 
@@ -86,11 +131,12 @@ public class CancelOrderRocketMQConsumer implements RocketMQListener<String> {
             Boolean exists = stringRedisTemplate.hasKey(stockKey);
             if (Boolean.TRUE.equals(exists)) {
                 stringRedisTemplate.opsForValue().increment(stockKey, detail.getNum());
+                stringRedisTemplate.delete(flagKey); // 删除flag，防止重复恢复
                 log.info("[取消消费] Redis 库存恢复。itemId={}，恢复数量={}",
                         detail.getItemId(), detail.getNum());
             } else {
                 log.info("[取消消费] Redis 库存 key 不存在，跳过恢复。itemId={}", detail.getItemId());
             }
-        }
+        }*/
     }
 }

@@ -79,7 +79,7 @@
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
-            <version>3.17.7</version>
+            <version>3.23.5</version>
         </dependency>
         <!--xxlJob依赖，用来做定时任务，补发消息到消息队列，防止宕机导致消息丢失-->
         <dependency>
@@ -105,6 +105,15 @@
             <artifactId>rocketmq-tools</artifactId>
             <!-- 版本必须与你的 rocketmq-spring-boot-starter 中的 rocketmq-client 版本一致 -->
             <version>4.9.4</version>
+        </dependency>
+        <!-- Prometheus监控核心依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
     </dependencies>
     <build>

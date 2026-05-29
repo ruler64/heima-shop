@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -39,12 +40,48 @@ public class cancelOverdueOrders {
         List<Order> overdueOrders = orderService.lambdaQuery()
                 .eq(Order::getStatus, OrderStatusEnum.UNPAID.getCode())
                 .lt(Order::getCreateTime, deadline)
-                .last("LIMIT 100")
+                .orderByAsc(Order::getCreateTime)
+                .last("LIMIT 200")
                 .list();
 
         if (overdueOrders == null || overdueOrders.isEmpty()) return;
 
+        // 2. 🌟 核心优化：把 100 个订单的 ID 提取出来
+        List<Long> orderIds = overdueOrders.stream().map(Order::getId).collect(Collectors.toList());
+
+        // 3. 🌟 核心优化：用 1 条 SQL 查出这 100 个订单的所有明细（100次瞬间变成1次！）
+        List<OrderDetail> allDetails = detailService.lambdaQuery()
+                .in(OrderDetail::getOrderId, orderIds)
+                .list();
+
+        if (allDetails == null || allDetails.isEmpty()) return;
+
+        // 4. 🌟 修正：用包含 orderId 的 PO 实体类进行内存分组
+        Map<Long, List<OrderDetail>> poDetailMap = allDetails.stream()
+                .collect(Collectors.groupingBy(OrderDetail::getOrderId));
+
+        // 5. 纯内存循环，周转极快，内存用完即扔
         for (Order order : overdueOrders) {
+            try {
+                // 从 Map 中直接获取当前订单的明细 PO
+                List<OrderDetail> orderDetails = poDetailMap.get(order.getId());
+                if (orderDetails == null || orderDetails.isEmpty()) continue;
+
+                // 🌟 修正：在这里将当前订单的 PO 局部转化为 DTO 列表，完美避开 DTO 字段缺失问题
+                List<OrderDetailDTO> details = orderDetails.stream()
+                        .map(detail -> new OrderDetailDTO()
+                                .setItemId(detail.getItemId())
+                                .setNum(detail.getNum()))
+                        .collect(Collectors.toList());
+
+                // 执行核心取消与库存恢复逻辑
+                orderService.cancelOrderAndRestore(order.getId(), details);
+                log.info("[兜底任务] 超时订单取消成功。orderId={}", order.getId());
+            } catch (Exception e) {
+                log.error("[兜底任务] 超时订单取消失败。orderId={}", order.getId(), e);
+            }
+        }
+        /*for (Order order : overdueOrders) {
             try {
                 LambdaQueryWrapper<OrderDetail> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.eq(OrderDetail::getOrderId, order.getId());
@@ -64,6 +101,6 @@ public class cancelOverdueOrders {
                 // 单个订单失败不影响其他订单，下次调度继续处理
                 log.error("[兜底任务] 超时订单取消失败，下次重试。orderId={}", order.getId(), e);
             }
-        }
+        }*/
     }
 }

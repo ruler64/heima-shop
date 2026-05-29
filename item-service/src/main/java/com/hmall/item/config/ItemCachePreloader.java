@@ -7,9 +7,12 @@ import com.hmall.item.domain.po.Item;
 import com.hmall.item.service.IItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +27,7 @@ public class ItemCachePreloader implements ApplicationRunner {
 
     private final IItemService itemService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
 
     // 定义缓存 Key
     public static final String ITEM_INDEX_KEY = "item:index:default";
@@ -33,47 +37,100 @@ public class ItemCachePreloader implements ApplicationRunner {
     public static final String ITEM_STOCK_KEY_PREFIX = "item:stock:{stock}:";
     public static final String ITEM_STOCK_VERSION_KEY_PREFIX = "item:stock:ver:{stock}:";
     public static final String ITEM_STOCK_EPOCH_KEY = "item:stock:epoch:{stock}";
-    public static final String ITEM_STOCK_SEQ_KEY = "item:stock:seq:{stock}";
-    //public static final String ITEM_MYSQL_STOCK_SEQ_KEY = "item:stock:mysql:seq:{stock}";
+
+    public static final String ITEM_STOCK_HEARTBEAT_KEY = "item:stock:heartbeat:{stock}";
+    public static final String ITEM_STOCK_SEQ_KEY_PREFIX = "item:stock:seq:{stock}:";
+    private static final String PRELOAD_LOCK_KEY = "item:cache:preload_lock";
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("============== 开始预热商品缓存 ==============");
-        // 1. 查询默认排序（update_time降序）的前 500 条热点数据
-        QueryWrapper<Item> queryWrapper = new QueryWrapper<>();
-        queryWrapper.orderByDesc("update_time").last("LIMIT 500");
-        List<Item> hotItems = itemService.list(queryWrapper);
+        log.info("[预热引擎] 开始执行热点商品缓存预热");
 
-        if (hotItems.isEmpty()) return;
+        // ── 分布式锁：防多节点并发启动时惊群打穿 MySQL ──────────────
+        RLock lock = redissonClient.getLock(PRELOAD_LOCK_KEY);
+        try {
+            // waitTime=35s：等其他节点预热完成再继续，不直接跳过
+            // leaseTime=30s：预热最长允许 30s，超时自动释放防死锁
+            boolean acquired = lock.tryLock(35, 30, TimeUnit.SECONDS);
+            if (!acquired) {
+                // 35s 都没等到锁，说明预热节点可能卡住了，记录警告继续启动
+                log.warn("[预热引擎] 等待预热锁超时（35s），将继续启动，缓存可能尚未就绪");
+                return;
+            }
 
-        // 2. 遍历写入 ZSet 索引和 String 详情
-        for (Item item : hotItems) {
-            String detailKey = ITEM_DETAIL_KEY_PREFIX + item.getId();
-            String stockKey = ITEM_STOCK_KEY_PREFIX + item.getId();
+            doPreload();
 
-            // 写入详情 (TTL: 60分钟)
-            stringRedisTemplate.opsForValue().set(
-                    detailKey,
-                    JSONUtil.toJsonStr(item),
-                    60+ RandomUtil.randomInt(0, 10), TimeUnit.MINUTES
-            );
-            // 库存 key 专门给 Lua 预扣减使用，避免和详情 JSON 混用
-            // 库存 key 每次都覆盖写（failover 后从 MySQL 事实源恢复）
-            stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(item.getStock()));
-            /*删除以下两行，交由 EpochInitializer 管理
-            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_EPOCH_KEY, "1");
-            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_SEQ_KEY, "0");
-            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_MYSQL_STOCK_SEQ_KEY, "0");
-            stringRedisTemplate.opsForValue().setIfAbsent(ITEM_STOCK_VERSION_KEY_PREFIX + item.getId(), "1|0");*/
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("[预热引擎] 预热线程被中断", e);
+        } catch (Exception e) {
+            log.error("[预热引擎] 预热发生未知异常", e);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
 
-            // 写入 ZSet 索引 (Score用更新时间戳，TTL: 30分钟)
-            long score = item.getUpdateTime() != null ?
-                    item.getUpdateTime().toEpochSecond(java.time.ZoneOffset.of("+8")) : 0;
-            stringRedisTemplate.opsForZSet().add(ITEM_INDEX_KEY, item.getId().toString(), score);
+    private void doPreload() {
+        // ── 读取热点数据 ──────────────────────────────────────────────
+        List<Item> hotItems = itemService.list(
+                new QueryWrapper<Item>().orderByDesc("update_time").last("LIMIT 500")
+        );
+        if (hotItems.isEmpty()) {
+            log.info("[预热引擎] 无热点商品，跳过预热");
+            return;
         }
 
-        // 设置 ZSet 的整体过期时间 (30分钟)
-        stringRedisTemplate.expire(ITEM_INDEX_KEY, 30, TimeUnit.MINUTES);
-        log.info("============== 商品缓存预热完成，共加载 {} 条 ==============", hotItems.size());
+        // ── Pipeline 批量写入（1500次RTT → 1次RTT）──────────────────
+        stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+
+            for (Item item : hotItems) {
+                byte[] detailKey  = serialize(ITEM_DETAIL_KEY_PREFIX + item.getId());
+                byte[] detailVal  = serialize(JSONUtil.toJsonStr(item));
+                byte[] stockKey   = serialize(ITEM_STOCK_KEY_PREFIX + item.getId());
+                byte[] stockVal   = serialize(String.valueOf(item.getStock()));
+
+                // 详情：允许覆盖（MySQL 是详情的事实源），随机 TTL 防雪崩60min+(0~10)min随机
+                long detailTTL = 3600L + RandomUtil.randomInt(0, 600);
+                connection.stringCommands().setEx(detailKey, detailTTL, detailVal);
+
+                // 库存：无论任何情况一律 setNX
+                // 理由：Redis 库存永远领先于 MySQL，用 MySQL 值覆盖只会带入更陈旧的数据
+                // key 不存在时（slave丢失）才写入，Failover 丢失的误差由凌晨对账修复
+                connection.stringCommands().setNX(stockKey, stockVal);
+
+                // ZSet 索引：不设短 TTL，由定时任务增量维护
+                byte[] indexKey = serialize(ITEM_INDEX_KEY);
+                long score = item.getUpdateTime() != null
+                        ? item.getUpdateTime().toEpochSecond(java.time.ZoneOffset.of("+8")) : 0;
+                connection.zSetCommands().zAdd(indexKey, score, serialize(item.getId().toString()));
+            }
+
+            // ZSet 设置整体过期时间 24h TTL（配合每日定时全量刷新任务）
+            // 不设置永久有效，避免下架商品永久留在榜单
+            byte[] indexKey = serialize(ITEM_INDEX_KEY);
+            connection.keyCommands().expire(indexKey, 86400L);
+
+            return null; // Pipeline executePipelined 必须返回 null
+        });
+
+        log.info("[预热引擎] ✅ Pipeline 预热完成，共加载 {} 条",
+                hotItems.size());
+    }
+
+    /**
+     * 判断是否为 Failover 后重启。
+     * 心跳 key 缺失 = 主节点宕机期间无法刷新心跳 → 从节点上心跳已过期。
+     */
+    private boolean isFailoverRestart() {
+        String heartbeat = stringRedisTemplate.opsForValue().get(ITEM_STOCK_HEARTBEAT_KEY);
+        String epoch     = stringRedisTemplate.opsForValue().get(ITEM_STOCK_EPOCH_KEY);
+        // 心跳消失 或 epoch 消失，均视为 Failover宕机
+        return heartbeat == null || epoch == null;
+    }
+
+    private byte[] serialize(String value) {
+        return stringRedisTemplate.getStringSerializer().serialize(value);
     }
 }

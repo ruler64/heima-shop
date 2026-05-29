@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -71,6 +72,9 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     private String stockVersionKey(Long itemId) {
         return STOCK_VERSION_KEY_PREFIX + itemId;
     }
+
+    @Qualifier("batchLazyLoadScript")
+    private final DefaultRedisScript<Long> batchLazyLoadScript;
 
     // 1. 定义 Lua 脚本
     /*private static final DefaultRedisScript<Long> BATCH_INCR_SCRIPT;
@@ -151,7 +155,6 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
      *
      * <p>设计说明：
      * <ul>
-     *   <li>TTL 设置为 30 分钟（短 TTL）：不影响凌晨对账接管长期同步逻辑；</li>
      *   <li>使用 {@code setIfAbsent}：防止并发懒加载时覆盖已经由正常预热写入的值；</li>
      *   <li>同步初始化 per-item version key（{@code epoch|0}），让对账能正确读取版本快照；</li>
      *   <li>若商品不存在或已下架，不写入任何 key，让 Lua 继续返回 nil，
@@ -174,10 +177,10 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         String stockKey   = ItemCachePreloader.ITEM_STOCK_KEY_PREFIX   + itemId;
         String versionKey = ItemCachePreloader.ITEM_STOCK_VERSION_KEY_PREFIX + itemId;
 
-        // 2. 写入库存 key（短 TTL = 30min，凌晨对账接管后续同步）
+        // 2. 写入库存 key（修复：去掉TTL，与预热保持一致（凌晨对账依赖版本key存活））
         //    setIfAbsent：防止并发情况下覆盖已有的预热值
         Boolean stockSet = stringRedisTemplate.opsForValue()
-                .setIfAbsent(stockKey, String.valueOf(item.getStock()), 30, TimeUnit.MINUTES);
+                .setIfAbsent(stockKey, String.valueOf(item.getStock()));
 
         if (Boolean.TRUE.equals(stockSet)) {
             log.info("[懒加载] 库存 key 写入成功。itemId={}，stock={}", itemId, item.getStock());
@@ -192,10 +195,63 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         String globalEpoch = stringRedisTemplate.opsForValue()
                 .get(ItemCachePreloader.ITEM_STOCK_EPOCH_KEY);
         String initVersion = (globalEpoch != null ? globalEpoch : "1") + "|0";
-        stringRedisTemplate.opsForValue()
-                .setIfAbsent(versionKey, initVersion, 30, TimeUnit.MINUTES);
+        // 修复：去掉TTL，保证凌晨对账时version key仍存在
+        stringRedisTemplate.opsForValue().setIfAbsent(versionKey, initVersion);
 
         log.info("[懒加载] per-item version key 初始化完成。itemId={}，version={}", itemId, initVersion);
+    }
+
+    /**
+     * 批量懒加载：将多个商品的 MySQL 库存原子写入 Redis。
+     * 供 trade-service 在 Lua 扣减发现 key 缺失时通过 Feign 调用。
+     * @param itemIds 商品id集合
+     */
+    @Override
+    public void batchLoadStockToRedis(List<Long> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) return;
+
+        // 1. 批量查 MySQL，过滤掉不存在或已下架的商品
+        List<Item> activeItems = listByIds(itemIds).stream()
+                .filter(item -> item.getStatus() == 1)
+                .collect(Collectors.toList());
+
+        if (activeItems.isEmpty()) {
+            log.warn("[批量懒加载] 所有商品不存在或已下架，跳过。itemIds={}", itemIds);
+            return;
+        }
+
+        // 2. 构建 Lua KEYS 和 ARGV
+        List<String> keys = new ArrayList<>();
+        List<String> args = new ArrayList<>();
+
+        // KEYS[1..n]：库存 key
+        for (Item item : activeItems) {
+            keys.add(ItemCachePreloader.ITEM_STOCK_KEY_PREFIX + item.getId());
+        }
+        // KEYS[n+1..2n]：版本 key
+        for (Item item : activeItems) {
+            keys.add(ItemCachePreloader.ITEM_STOCK_VERSION_KEY_PREFIX + item.getId());
+            // （新增）KEYS[2n+1..3n]：per item seq key
+            keys.add(ItemCachePreloader.ITEM_STOCK_SEQ_KEY_PREFIX + item.getId());
+        }
+        // KEYS[3n+1]：epoch key
+        keys.add(ItemCachePreloader.ITEM_STOCK_EPOCH_KEY);
+
+        // ARGV[1..n]：MySQL 库存值
+        for (Item item : activeItems) {
+            args.add(String.valueOf(item.getStock()));
+        }
+
+        // 3. 一次 Lua 调用原子写入所有 stock key + version key
+        Long written = stringRedisTemplate.execute(
+                batchLazyLoadScript,
+                keys,
+                args.toArray(new String[0])
+        );
+
+        log.info("[批量懒加载] 完成。请求商品数={}，实际写入={}。itemIds={}",
+                activeItems.size(), written,
+                activeItems.stream().map(Item::getId).collect(Collectors.toList()));
     }
 
     /**
@@ -624,7 +680,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     @Override
     @Transactional(rollbackFor = Exception.class) // 保证流水更新和库存恢复在同一个事务中
-    public void increaseStock(Long orderId, List<OrderDetailDTO> orderDetailDTOS) {
+    public boolean increaseStock(Long orderId, List<OrderDetailDTO> orderDetailDTOS) {
 
         // 1. 第一道防线：利用库存流水的“状态机”做严密的幂等性校验
         // 只有状态为 1 (已扣减) 的流水，才能被修改为 2 (已回滚)
@@ -642,7 +698,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
             // 情况 B：流水状态已经是 2 了（MQ 重复发来的回滚消息，之前已经加过了）
             // 这两种情况我们都直接放行（return），绝对不去改真实库存！这就叫完美幂等！
             log.warn("恢复库存触发幂等拦截：该订单 {} 无有效扣减记录或已完成恢复，直接放行", orderId);
-            return;
+            return false; // ← 告诉调用方：幂等拦截，未实际恢复
         }
 
         // 3. 安全恢复真实库存
@@ -697,5 +753,6 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 //            }
 //        });
         log.info("订单 {} 超时/取消，恢复底层真实库存成功并更新流水状态", orderId);
+        return true; // ← 本次真正执行了恢复
     }
 }

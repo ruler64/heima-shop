@@ -100,6 +100,16 @@
             <!-- 版本必须与你的 rocketmq-spring-boot-starter 中的 rocketmq-client 版本一致 -->
             <version>4.9.4</version>
         </dependency>
+        <!--Spring Boot Actuator + Micrometer（数据源）监控微服务JVM 状态、线程池、内存等数据-->
+        <!-- Prometheus监控核心依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <finalName>${project.artifactId}</finalName>

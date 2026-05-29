@@ -26,6 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 关单消费者，负责下单未支付20分钟后的关单功能
+ */
 @Slf4j
 @Service
 @RocketMQMessageListener(
@@ -65,16 +68,35 @@ public class DelayCloseRocketMQConsumer implements RocketMQListener<String> {
                 return;
             }
 
-            // 2. 订单状态不是未支付，直接放行
+            // 2. 本地订单状态非未支付，直接放行（已支付/已关单）
             if (OrderStatusEnum.getByCode(order.getStatus()) != OrderStatusEnum.UNPAID) {
-                log.info("[延迟关单] 订单状态非未支付，放行。orderId={}", orderId);
+                log.info("[延迟关单] 订单状态非未支付，放行。orderId={}, status={}",
+                        orderId, order.getStatus());
                 return;
             }
 
-            // 3. 查询支付状态
-            PayOrderDTO payOrder = payClient.queryPayOrderByBizOrderNo(orderId);
-            Integer payStatus = payOrder == null ? null : payOrder.getStatus();
+            // 3. 查询支付状态。确认是未支付状态，才调用 pay-service 进一步核实
+            //    pay-service 不可用时不应抛异常吃掉重试次数，而是当作"支付状态未知"处理
+            Integer payStatus = null;
+            try {
+                PayOrderDTO payOrder = payClient.queryPayOrderByBizOrderNo(orderId);
+                payStatus = payOrder == null ? null : payOrder.getStatus();
+            } catch (Exception e) {
+                // pay-service 不可用：降级为状态未知，走复查逻辑
+                log.warn("[延迟关单] 查询pay-service失败，降级处理。orderId={}, error={}",
+                        orderId, e.getMessage());
+                // 未超过复查次数：发延迟复查消息，本次正常消费不触发RocketMQ重试
+                if (recheckTimes < MAX_RECHECK_TIMES) {
+                    sendRecheckMessage(orderId, recheckTimes + 1, 3);
+                    log.warn("[延迟关单] pay-service不可用，10秒后复查({}/{})。orderId={}",
+                            recheckTimes + 1, MAX_RECHECK_TIMES, orderId);
+                    return;
+                }
+                // 超过复查次数：pay-service 长期不可用，直接按超时关单处理
+                log.error("[延迟关单] pay-service不可用且复查已达上限，强制关单。orderId={}", orderId);
+            }
 
+            // 4. pay-service 返回已支付，同步本地状态
             if (Integer.valueOf(PAY_STATUS_SUCCESS).equals(payStatus)) {
                 // 支付中心已支付，同步订单状态
                 orderService.markOrderPaySuccess(orderId);
@@ -82,6 +104,7 @@ public class DelayCloseRocketMQConsumer implements RocketMQListener<String> {
                 return;
             }
 
+            // 5. 支付状态未知或仍在等待，复查
             if (needRecheck(payStatus, recheckTimes)) {
                 // 支付状态未知，10 秒后复查（level 3）
                 sendRecheckMessage(orderId, recheckTimes + 1, 3);
@@ -89,12 +112,18 @@ public class DelayCloseRocketMQConsumer implements RocketMQListener<String> {
                 return;
             }
 
-            // 4. 确认超时未支付，执行关单
-            List<OrderDetail> detailList = orderDetailService.lambdaQuery()
-                    .eq(OrderDetail::getOrderId, orderId).list();
-            List<OrderDetailDTO> details = BeanUtils.copyList(detailList, OrderDetailDTO.class);
-            orderService.cancelOrderAndRestore(orderId, details);
-            log.info("[延迟关单] 超时关单成功。orderId={}，payStatus={}", orderId, payStatus);
+            // 6. 确认超时未支付，执行关单
+            try {
+                List<OrderDetail> detailList = orderDetailService.lambdaQuery()
+                        .eq(OrderDetail::getOrderId, orderId).list();
+                List<OrderDetailDTO> details = BeanUtils.copyList(detailList, OrderDetailDTO.class);
+                orderService.cancelOrderAndRestore(orderId, details);
+                log.info("[延迟关单] 超时关单成功。orderId={}，payStatus={}", orderId, payStatus);
+            } catch (Exception e) {
+                // 关单本身失败（DB异常等），才触发 RocketMQ 重试
+                log.error("[延迟关单] 关单执行异常，触发重试。orderId={}", orderId, e);
+                throw new RuntimeException("延迟关单执行失败", e);
+            }
 
         } catch (Exception e) {
             log.error("[延迟关单] 处理异常，触发重试。orderId={}", orderId, e);
@@ -107,6 +136,13 @@ public class DelayCloseRocketMQConsumer implements RocketMQListener<String> {
         Boolean flagExists = stringRedisTemplate.hasKey(flagKey);
 
         if (Boolean.TRUE.equals(flagExists)) {
+            // 加上限判断，和 needRecheck 保持一致
+            if (recheckTimes >= MAX_RECHECK_TIMES) {
+                log.warn("[延迟关单] 订单不存在且复查次数已达上限，安全退出。orderId={}", orderId);
+                // 顺手清理可能残留的 Redis flag
+                stringRedisTemplate.delete(RedisConstants.LUA_ORDER_FLAG_PREFIX + orderId);
+                return;
+            }
             // flag 存在：建单 consumer 还在重试中（最多2分钟），延迟3分钟后复查（level 7）
             sendRecheckMessage(orderId, recheckTimes + 1, 7);
             log.warn("[延迟关单] 订单不存在但flag存在，3分钟后复查。orderId={}", orderId);

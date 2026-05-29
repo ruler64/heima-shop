@@ -81,7 +81,7 @@ public interface MQConstants {
     String ROCKETMQ_ORDER_DELAY_GROUP = "trade-order-delay-check-group";
 
     /**
-     * 监听延迟消息的topic和消费者 TTL=20min
+     * 关单功能：监听延迟消息的topic和消费者 TTL=20min
      */
     String ROCKETMQ_DELAY_CLOSE_TOPIC = "TRADE_DELAY_CLOSE_TOPIC";
     String ROCKETMQ_DELAY_CLOSE_GROUP = "trade-delay-close-consumer-group";

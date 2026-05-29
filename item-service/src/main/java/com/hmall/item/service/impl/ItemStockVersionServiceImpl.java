@@ -40,11 +40,12 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
 
     /**
      * 更新mysql该商品的恢复状态
+     * 修复：强制修复时，只更新 Epoch，绝对不重置 mysql_seq，保留历史流水！
      * @param itemId 商品ID
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void recordReconcileRepair(Long itemId) {
+    public void recordReconcileRepair(Long itemId, Long targetEpoch) {
         ensureVersionRowExists(itemId, null, "RECONCILE");
 
         ItemStockVersion current = getOne(new LambdaQueryWrapper<ItemStockVersion>()
@@ -55,17 +56,16 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
         }
 
         boolean updated = lambdaUpdate()
-                .set(ItemStockVersion::getMysqlEpoch, current.getMysqlEpoch() + 1)
-                .set(ItemStockVersion::getMysqlSeq, 0L)
-                .set(ItemStockVersion::getLastOrderId, null)
+                .set(ItemStockVersion::getMysqlEpoch, targetEpoch)
+//                .set(ItemStockVersion::getMysqlSeq, 0L)
+//                .set(ItemStockVersion::getLastOrderId, null)
                 .set(ItemStockVersion::getLastEventType, "RECONCILE")
                 .eq(ItemStockVersion::getItemId, itemId)
-                .eq(ItemStockVersion::getMysqlEpoch, current.getMysqlEpoch())
-                .eq(ItemStockVersion::getMysqlSeq, current.getMysqlSeq())
+//                .eq(ItemStockVersion::getMysqlEpoch, current.getMysqlEpoch())
+//                .eq(ItemStockVersion::getMysqlSeq, current.getMysqlSeq())
                 .update();
         if (!updated) {
-            log.warn("item_stock_version 对账修复并发更新冲突，重试一次，itemId={}", itemId);
-            recordReconcileRepairRetry(itemId);
+            log.warn("item_stock_version 对账修复并发更新冲突，itemId={}", itemId);
         }
     }
 
@@ -90,29 +90,14 @@ public class ItemStockVersionServiceImpl extends ServiceImpl<ItemStockVersionMap
     }
 
     /**
-     * 确保更新mysql该商品的恢复状态成功
-     * @param itemId 商品ID
+     * 🌟 新增：惰性打标的平滑同步。只对齐纪元，不留修复痕迹
      */
-    private void recordReconcileRepairRetry(Long itemId) {
-        ItemStockVersion current = getOne(new LambdaQueryWrapper<ItemStockVersion>()
+    @Override
+    public void syncEpoch(Long itemId, Long targetEpoch) {
+        lambdaUpdate()
+                .set(ItemStockVersion::getMysqlEpoch, targetEpoch)
                 .eq(ItemStockVersion::getItemId, itemId)
-                .last("LIMIT 1"));
-        if (current == null) {
-            throw new IllegalStateException("查询 item_stock_version 失败, itemId=" + itemId);
-        }
-
-        boolean updated = lambdaUpdate()
-                .set(ItemStockVersion::getMysqlEpoch, current.getMysqlEpoch() + 1)
-                .set(ItemStockVersion::getMysqlSeq, 0L)
-                .set(ItemStockVersion::getLastOrderId, null)
-                .set(ItemStockVersion::getLastEventType, "RECONCILE")
-                .eq(ItemStockVersion::getItemId, itemId)
-                .eq(ItemStockVersion::getMysqlEpoch, current.getMysqlEpoch())
-                .eq(ItemStockVersion::getMysqlSeq, current.getMysqlSeq())
                 .update();
-        if (!updated) {
-            throw new IllegalStateException("更新 item_stock_version 对账修复版本失败, itemId=" + itemId);
-        }
     }
     @Override
     public Long getMaxMysqlEpoch() {

@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * 订单落库广播消费者（trade-service）。
- * 负责发送 RabbitMQ 延迟关单消息（保留延迟队列，15min 精确延迟）。
+ * 负责发送 RocketMQ 延迟关单消息（保留延迟队列，20min 精确延迟）。
  */
 @Slf4j
 @Service
