@@ -91,7 +91,7 @@ public class OutboxCanalListener {
 
         try {
             rocketMQTemplate.syncSend(
-                    "TRADE_DB_ORDER_TOPIC",
+                    MQConstants.ROCKETMQ_DB_ORDER_TOPIC,
                     MessageBuilder.withPayload(payload)
                             .setHeader(RocketMQHeaders.KEYS, String.valueOf(orderId))
                             .build()

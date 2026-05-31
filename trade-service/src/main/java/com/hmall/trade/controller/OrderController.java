@@ -2,6 +2,7 @@ package com.hmall.trade.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hmall.common.utils.BeanUtils;
+import com.hmall.trade.domain.document.EsOrderDoc;
 import com.hmall.trade.domain.po.LocalEventOutbox;
 import com.hmall.trade.mapper.LocalEventOutboxMapper;
 import org.springframework.validation.annotation.Validated;
@@ -14,6 +15,8 @@ import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Api(tags = "订单管理接口")
 @Validated
@@ -50,4 +53,19 @@ public class OrderController {
                 .last("LIMIT 1"));
         return count != null && count > 0;
     }
+    /*@GetMapping("/user/{userId}")
+    public List<EsOrderDoc> getUserOrders(
+            @PathVariable("userId") Long userId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        return orderService.searchUserOrders(userId, page, size);
+    }
+
+    @GetMapping("/merchant/{merchantId}")
+    public List<EsOrderDoc> getMerchantOrders(
+            @PathVariable("merchantId") Long merchantId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        return orderService.searchMerchantOrders(merchantId, page, size);
+    }*/
 }

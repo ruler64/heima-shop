@@ -71,7 +71,7 @@ public interface MQConstants {
      * 与他对应的消费者组
      */
     String ROCKETMQ_DB_ORDER_TOPIC = "TRADE_DB_ORDER_TOPIC";
-    String ROCKETMQ_DB_ORDER_PRODUCER_GROUP = "trade-db-order-producer-group";//半事务消息消费者组
+    String ROCKETMQ_DB_ORDER_PRODUCER_GROUP = "trade-db-order-producer-group";//广播消息消费者组
 
     /**
      * 各服务对应的 RocketMQ 消费组名称
@@ -93,5 +93,9 @@ public interface MQConstants {
     String ORDER_CANAL_RABBITMQ_EXCHANGE = "canal.exchange";
     String ORDER_CANAL_RABBITMQ_QUEUE = "canal.outbox.sync.queue";
     String ORDER_CANAL_RABBITMQ_KEY = "canal.insert.outbox";
+
+    // 新增：Order 同步 ES 专用常量
+    public static final String ORDER_CANAL_SYNC_ES_QUEUE = "order.canal.sync.es.queue";
+    public static final String ORDER_CANAL_CHANGE_KEY = "canal.order.change";
 
 }

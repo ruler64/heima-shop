@@ -1,8 +1,13 @@
 package com.hmall.api.client;
 
 import com.hmall.api.client.fallback.TradeClientFallback;
+import com.hmall.api.dto.Order;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 @FeignClient(value = "trade-service", fallbackFactory = TradeClientFallback.class)
 public interface TradeClient {
@@ -13,4 +18,10 @@ public interface TradeClient {
      */
     @GetMapping("/orders/pending-exists")
     Boolean existsPendingOutbox();
+
+//    @GetMapping("/orders/user/{userId}")
+//    List<EsOrderDoc> getOrdersByUserIdFromDB(@PathVariable Long userId, @RequestParam("page") int page, @RequestParam("size") int size);
+//
+//    @GetMapping("/orders/merchant/{merchantId}")
+//    List<EsOrderDoc> getOrdersByMerchantIdFromDB(@PathVariable Long merchantId, @RequestParam("page") int page, @RequestParam("size") int size);
 }
