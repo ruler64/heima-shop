@@ -68,7 +68,7 @@ public class OrderMQListener {
             }
             UserContext.setUser(userId);
             // 直接调用落库，防重交给 DB 的唯一索引
-            orderService.handleDbOrder(orderId, userId, orderFormDTO);
+            orderService.preHandleOrder(orderId, userId, orderFormDTO);
             channel.basicAck(deliveryTag, false);
             if (log.isDebugEnabled()) {
                 log.debug("异步下单消息消费成功并ACK，orderId={}", orderId);

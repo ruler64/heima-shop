@@ -5,6 +5,8 @@ import com.hmall.item.service.IItemStockVersionService;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RedissonClient;
+import org.redisson.connection.ConnectionListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
@@ -13,6 +15,8 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,6 +84,9 @@ public class RedisFailoverDetector {
      */
     private final AtomicBoolean topologyDirtyFlag = new AtomicBoolean(false);
 
+    // 注入 RedissonClient 拿到真实的底层连接事件
+    private final RedissonClient redissonClient;
+
     /**
      * 处理中守卫。
      * 防止上一次看门狗还未执行完时，下一次定时触发重叠执行。
@@ -111,6 +118,28 @@ public class RedisFailoverDetector {
     public void markTopologyDirty() {
         topologyDirtyFlag.set(true);
     }
+    /**
+     * 【真正补齐 Layer1 毫秒级探针】
+     * 在 Bean 初始化时，向 Redisson 注册集群节点连接监听器
+     */
+    /*@PostConstruct
+    public void initReactiveProbe() {
+        redissonClient.getClusterNodesGroup().addConnectionListener(new ConnectionListener() {
+            @Override
+            public void onConnect(InetSocketAddress address) {
+                // 毫秒级触发：一旦发现与某个节点重新建连或槽位变更
+                log.warn("[RedisFailover] 📡 监听到 Redis 集群拓扑重连事件，目标节点: {}", address);
+                topologyDirtyFlag.set(true); // 瞬间将标志位染红！
+            }
+
+            @Override
+            public void onDisconnect(InetSocketAddress address) {
+                // 毫秒级触发：一旦发现有节点断开连接
+                log.error("[RedisFailover] 🚨 监听到 Redis 节点物理断开，目标节点: {}", address);
+                topologyDirtyFlag.set(true); // 瞬间将标志位染红！
+            }
+        });
+    }*/
 
     // ─────────────────────────────────────────────────────────
     // 看门狗主循环

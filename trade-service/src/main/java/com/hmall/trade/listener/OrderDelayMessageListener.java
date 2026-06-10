@@ -97,7 +97,7 @@ public class OrderDelayMessageListener {
                     .eq(OrderDetail::getOrderId, orderId)
                     .list();
             List<OrderDetailDTO> details = BeanUtils.copyList(detailList, OrderDetailDTO.class);
-            orderService.cancelOrderAndRestore(orderId, details);
+            orderService.cancelOrderWithOutbox(orderId, details);
             log.info("延迟关单检测：订单 {} 超时未支付，执行新版异步关单并记录退库任务成功，payStatus={}, recheckTimes={}",
                     orderId, payStatus, recheckTimes);
 

@@ -113,11 +113,17 @@ public class DelayCloseRocketMQConsumer implements RocketMQListener<String> {
             }
 
             // 6. 确认超时未支付，执行关单
+            // 变更点：cancelOrderAndRestore → cancelOrderWithOutbox
+            // cancelOrderWithOutbox 内部完成：
+            //   ① 乐观锁 UPDATE order status=CANCELLED
+            //   ② 同事务 INSERT outbox(CANCEL_RESTORE_STOCK)
+            //   ③ afterCommit syncSend ROCKETMQ_CANCEL_TOPIC（快速路径）
+            //   Canal 兜底补偿（失败时）
             try {
                 List<OrderDetail> detailList = orderDetailService.lambdaQuery()
                         .eq(OrderDetail::getOrderId, orderId).list();
                 List<OrderDetailDTO> details = BeanUtils.copyList(detailList, OrderDetailDTO.class);
-                orderService.cancelOrderAndRestore(orderId, details);
+                orderService.cancelOrderWithOutbox(orderId, details);
                 log.info("[延迟关单] 超时关单成功。orderId={}，payStatus={}", orderId, payStatus);
             } catch (Exception e) {
                 // 关单本身失败（DB异常等），才触发 RocketMQ 重试

@@ -42,7 +42,7 @@ public class OrderCancelListener {
             log.warn("收到订单 {} 的逆向取消消息，开始执行回滚逻辑...", orderId);
 
             // 执行回滚（关闭订单、退还 Redis 预扣库存）
-            orderService.cancelOrderAndRestore(orderId, details);
+            orderService.cancelOrderWithOutbox(orderId, details);
 
             // 成功后手动 ACK
             channel.basicAck(deliveryTag, false);

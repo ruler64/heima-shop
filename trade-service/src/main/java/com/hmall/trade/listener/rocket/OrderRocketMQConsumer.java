@@ -50,7 +50,7 @@ public class OrderRocketMQConsumer implements RocketMQListener<String> {
 
         try {
             UserContext.setUser(userId);
-            orderService.handleDbOrder(orderId, userId, orderFormDTO);
+            orderService.preHandleOrder(orderId, userId, orderFormDTO);
 
             //此处如果直接删除LUA写入redis的幂等key的话，可能会导致重复扣减redis库存的问题，是否应该考虑24小时后删除？
             /*long bucket = Math.floorMod(orderId, (long) RedisConstants.OUTBOX_BUCKETS);

@@ -75,7 +75,9 @@ public class cancelOverdueOrders {
                         .collect(Collectors.toList());
 
                 // 执行核心取消与库存恢复逻辑
-                orderService.cancelOrderAndRestore(order.getId(), details);
+                // ✅ 变更点：cancelOrderAndRestore → cancelOrderWithOutbox
+                // 内部乐观锁幂等，重复触发安全；outbox 补偿取代事务消息
+                orderService.cancelOrderWithOutbox(order.getId(), details);
                 log.info("[兜底任务] 超时订单取消成功。orderId={}", order.getId());
             } catch (Exception e) {
                 log.error("[兜底任务] 超时订单取消失败。orderId={}", order.getId(), e);

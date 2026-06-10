@@ -27,18 +27,18 @@ public class RocketMQTemplateConfig {
         return template;
     }
 
-    /**
-     * 取消订单链路专用 template，必须用独立的 producer group，
-     * 因为每个 producer group 只能绑定一个 @RocketMQTransactionListener。
-     */
-    @Bean(name = "CancelRocketMQTemplate")
-    public RocketMQTemplate cancelRocketMQTemplate() {
-        RocketMQTemplate template = new RocketMQTemplate();
-        TransactionMQProducer producer = new TransactionMQProducer(MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP);
-        producer.setNamesrvAddr(nameServer);
-        template.setProducer(producer);
-        return template;
-    }
+//    /**
+//     * 取消订单链路专用 template，必须用独立的 producer group，
+//     * 因为每个 producer group 只能绑定一个 @RocketMQTransactionListener。
+//     */
+//    @Bean(name = "CancelRocketMQTemplate")
+//    public RocketMQTemplate cancelRocketMQTemplate() {
+//        RocketMQTemplate template = new RocketMQTemplate();
+//        TransactionMQProducer producer = new TransactionMQProducer(MQConstants.ROCKETMQ_CANCEL_CONSUMER_GROUP);
+//        producer.setNamesrvAddr(nameServer);
+//        template.setProducer(producer);
+//        return template;
+//    }
 
     /**
      * 订单落库广播专用 template。

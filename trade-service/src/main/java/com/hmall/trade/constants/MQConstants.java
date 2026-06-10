@@ -98,4 +98,9 @@ public interface MQConstants {
     public static final String ORDER_CANAL_SYNC_ES_QUEUE = "order.canal.sync.es.queue";
     public static final String ORDER_CANAL_CHANGE_KEY = "canal.order.change";
 
+    // 统一管理 local_event_outbox 表中 event_type 字段的取值
+    // 各 Listener / Service 引用此处，禁止散落魔法字符串
+    String OUTBOX_EVENT_ORDER_BROADCAST = "DB_ORDER_BROADCAST";     // 原有
+    String OUTBOX_EVENT_CANCEL_RESTORE  = "CANCEL_RESTORE_STOCK";   // 新增
+
 }

@@ -1,3 +1,4 @@
+/*
 package com.hmall.trade.listener.rocket;
 
 import com.alibaba.fastjson.JSON;
@@ -16,13 +17,15 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
+*/
 /**
  * 取消订单事务监听器。
  *
  * 绑定 cancelRocketMQTemplate，与下单监听器完全隔离。
  * 本地事务：更新订单状态为 CANCELLED + 写 cancel_flag 到 Redis。
  * 反查凭证：cancel_flag:{orderId}，TTL=24h。
- */
+ *//*
+
 @Slf4j
 @Component
 @RocketMQTransactionListener(rocketMQTemplateBeanName = "CancelRocketMQTemplate")
@@ -95,7 +98,9 @@ public class CancelOrderTransactionListener implements RocketMQLocalTransactionL
             log.error("[取消反查] 查询异常，无法判断状态，UNKNOWN。orderId={}", orderId, e);
             return RocketMQLocalTransactionState.UNKNOWN;
         }
-            /*// 3. 【精髓：在反查中重试本地事务】
+            */
+/*//*
+/ 3. 【精髓：在反查中重试本地事务】
             // 如果走到这里，说明之前的 executeLocalTransaction 抛异常没执行成功。
             // 既然你要求“必须成功”，那我们就借用反查的线程，再尝试执行一次！
             log.info("[取消反查] 发现本地事务未完成，开始重试本地事务！orderId={}", orderId);
@@ -116,6 +121,7 @@ public class CancelOrderTransactionListener implements RocketMQLocalTransactionL
             // RocketMQ 默认会以时间(60秒)反查 15 次，足够熬过数据库重启或网络抖动。
             log.error("[取消反查] 重试本地事务依然发生系统异常，继续 UNKNOWN 等待下次反查。orderId={}", orderId, e);
             return RocketMQLocalTransactionState.UNKNOWN;
-        }*/
+        }*//*
+
     }
-}
+}*/
